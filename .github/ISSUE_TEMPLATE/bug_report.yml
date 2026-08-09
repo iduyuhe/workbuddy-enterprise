@@ -1,0 +1,64 @@
+name: Bug Report
+description: 报告一个缺陷 / 异常行为
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: desc
+    attributes:
+      label: 缺陷描述
+      description: 简明描述你遇到的问题。
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 一步步说明如何复现（命令、请求、输入）。
+      placeholder: |
+        1. 启动 xxx 服务
+        2. 调用 xxx 接口
+        3. 观察到 ...
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: 部署方式
+      options:
+        - 本地轻量（SQLite + InMemory，无 GPU）
+        - Docker Compose 私有化
+        - 其他 / 不确定
+    validations:
+      required: true
+  - type: dropdown
+    id: service
+    attributes:
+      label: 受影响服务
+      options:
+        - gateway
+        - auth-service
+        - model-gateway
+        - knowledge-service
+        - skills-registry
+        - mcp-connector
+        - audit-service
+        - frontend
+        - 部署 / 其他
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 报错信息
+      description: 粘贴相关服务日志或接口返回（请脱敏，不要包含密钥 / token）。
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境信息
+      description: OS / Python 版本 / Node 版本 / 是否 GPU 等。
+    validations:
+      required: false
