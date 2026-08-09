@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { getAccessToken } from '../auth';
 import {
   apiBase,
-  getAccessToken,
   listProjects,
   Project,
   listKbs,

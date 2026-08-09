@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginLocal } from '../api/client';
 import { setTokens } from '../auth';
@@ -6,6 +6,18 @@ import { setTokens } from '../auth';
 export default function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
+
+  // OIDC 回调落地：IdP 登录后回跳 /login?access_token=...&refresh_token=...，读取并跳转
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const at = params.get('access_token');
+    const rt = params.get('refresh_token');
+    if (at) {
+      setTokens(at, rt || undefined);
+      window.history.replaceState({}, '', window.location.pathname);
+      navigate('/chat', { replace: true });
+    }
+  }, [navigate]);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

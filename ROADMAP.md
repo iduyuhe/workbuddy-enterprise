@@ -11,13 +11,14 @@ WorkBuddy Enterprise Edition 采用「先跑通最小闭环、再阶梯式增强
 - [x] 认证 / RBAC / 审计埋点
 - [x] MVP 全链路真实验证（`VERIFICATION_REPORT.md`）
 
-## 🔜 阶段 2 · 生产化与智能增强
+## 🔜 阶段 2 · 生产化与智能增强（部分完成 · 2026-08-09 晚补充）
 
-- [ ] **生产数据层**：PostgreSQL / Qdrant 正式接入，替换 SQLite / InMemory 降级
-- [ ] **Agent 运行时**：LangGraph 编排，Skills / MCP 真实执行（当前 invoke 仅返回调度元数据）
-- [ ] **内容审核**：涉密 / 涉政 / 暴力输入输出审核管线
-- [ ] **多模型路由策略**：按任务 / 成本 / 延迟自动选模型
-- [ ] **前端完善**：知识库文档列表、OIDC 回调落地、项目切换 UX
+- [x] **生产数据层 · Qdrant**：知识库支持 `QDRANT_URL`（独立服务端）/ `QDRANT_LOCAL_PATH`（嵌入式本地引擎，已真实验证）/ InMemory（dev）三级；RAG 闭环走真实 Qdrant 引擎
+- [ ] **生产数据层 · PostgreSQL**：所有服务 `DATABASE_URL` 已配置化（默认 sqlite），docker-compose 已注入 PG；本环境无 PG 服务，未端到端验证
+- [ ] **Agent 运行时**：LangGraph 编排，Skills / MCP 真实执行（当前 invoke 仅返回调度元数据）— 待做
+- [ ] **内容审核**：涉密 / 涉政 / 暴力输入输出审核管线 — 待做
+- [x] **多模型路由策略**：model-gateway 按模型名/前缀路由 vLLM / SGLang / Claude，真实 `/v1/chat/completions` 调用已具备（无 GPU 时优雅 mock）
+- [x] **前端完善**：`npm run build` 通过（修复 tsconfig + Chat.tsx 导入）；OIDC 回调落地（授权码流程 + 前端 token 落地）；知识库文档列表已实现（项目切换 UX 待补）
 
 ## 🔜 阶段 3 · 合规与信创
 

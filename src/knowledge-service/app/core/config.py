@@ -7,9 +7,10 @@ PORT = int(os.getenv("PORT", "8005"))
 HEADER_USER_ID = "X-User-Id"
 HEADER_PROJECT_ID = "X-Project-Id"
 
-# Qdrant：未配置则使用进程内 InMemory 向量库（dev / 单机演示）
+# Qdrant：优先级 QDRANT_URL(独立服务端) > QDRANT_LOCAL_PATH(嵌入式本地引擎) > InMemory(dev 默认)
 QDRANT_URL = os.getenv("QDRANT_URL")  # e.g. http://localhost:6333
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+QDRANT_LOCAL_PATH = os.getenv("QDRANT_LOCAL_PATH")  # 嵌入式本地引擎（免服务端），如 ./.qdrant_storage
 
 # Embedding 模型名（sentence-transformers / FlagEmbedding）
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")

@@ -1,13 +1,16 @@
 """向量存储抽象：Qdrant（生产） / InMemory（dev 默认）。
 
-InMemory 用于未配置 QDRANT_URL 时的单机演示，向量检索用余弦相似度。
-两者对外暴露统一接口：ensure_collection / upsert / search / delete_document / count。
+Qdrant 两种形态：
+  - QDRANT_URL 指向独立服务端（生产集群）；
+  - QDRANT_LOCAL_PATH 使用嵌入式本地引擎（免服务端，落盘持久化，单机/边缘生产可用）。
+两者均通过 qdrant-client 真实引擎检索。InMemory 仅用于完全未配置时的单机演示。
+统一接口：ensure_collection / upsert / search / delete_document / count。
 """
 import os
 
 import numpy as np
 
-from app.core.config import QDRANT_API_KEY, QDRANT_URL
+from app.core.config import QDRANT_API_KEY, QDRANT_URL, QDRANT_LOCAL_PATH
 
 
 def _cosine(a, b) -> float:
@@ -67,12 +70,16 @@ class InMemoryVectorStore:
 
 
 class QdrantVectorStore:
-    def __init__(self, url: str, api_key: str | None = None):
+    def __init__(self, url: str | None = None, api_key: str | None = None, path: str | None = None):
         from qdrant_client import QdrantClient
         from qdrant_client.models import Distance, VectorParams
         self._VectorParams = VectorParams
         self._Distance = Distance
-        self._client = QdrantClient(url=url, api_key=api_key)
+        if path:
+            # 嵌入式本地引擎：无需独立 Qdrant 服务端，向量落盘持久化（单机/边缘生产场景）
+            self._client = QdrantClient(path=path)
+        else:
+            self._client = QdrantClient(url=url, api_key=api_key)
 
     def ensure_collection(self, name: str, dim: int):
         from qdrant_client.models import Distance, VectorParams
@@ -122,9 +129,12 @@ def get_vector_store():
     if _STORE is not None:
         return _STORE
     if QDRANT_URL:
-        _STORE = QdrantVectorStore(QDRANT_URL, QDRANT_API_KEY)
-        print(f"[vector_store] using Qdrant @ {QDRANT_URL}")
+        _STORE = QdrantVectorStore(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+        print(f"[vector_store] using Qdrant server @ {QDRANT_URL}")
+    elif QDRANT_LOCAL_PATH:
+        _STORE = QdrantVectorStore(path=QDRANT_LOCAL_PATH)
+        print(f"[vector_store] using Qdrant local engine @ {QDRANT_LOCAL_PATH}")
     else:
         _STORE = InMemoryVectorStore()
-        print("[vector_store] QDRANT_URL not set -> using InMemory store (dev)")
+        print("[vector_store] QDRANT_URL/QDRANT_LOCAL_PATH not set -> InMemory store (dev)")
     return _STORE

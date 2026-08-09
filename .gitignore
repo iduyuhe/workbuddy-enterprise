@@ -40,3 +40,10 @@ uploads/
 # ===== OS =====
 .DS_Store
 Thumbs.db
+
+# ===== Qdrant 本地引擎存储（运行时生成）=====
+.qdrant_storage/
+
+# ===== vite 配置编译产物（tsc -b 生成，非源码）=====
+vite.config.js
+vite.config.d.ts
