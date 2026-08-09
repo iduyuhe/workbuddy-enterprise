@@ -29,6 +29,11 @@ build/
 # ===== WorkBuddy 内部数据 =====
 .workbuddy/
 
+# ===== 运行时上传/解析临时目录 =====
+kb_uploads/
+uploads/
+*.tmp
+
 # ===== 大模型权重（体积巨大，绝不入库）=====
 /models/
 
