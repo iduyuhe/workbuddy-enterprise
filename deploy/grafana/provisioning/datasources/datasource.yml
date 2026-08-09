@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Langfuse
+    type: loki
+    access: proxy
+    url: http://langfuse:3000
+    jsonData:
+      maxLines: 1000

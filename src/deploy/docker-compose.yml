@@ -1,0 +1,203 @@
+# WorkBuddy Enterprise Edition - Docker Compose (单主机起步部署)
+# 端口规划（避免冲突）：
+#   vllm      8000   qdrant 6333   postgres 5432   redis 6379
+#   backend   8080   web     3000   langfuse 3100
+#   prometheus 9090 grafana 3001
+# 注意：web 用 3000，langfuse 用 3100，grafana 用 3001，互不冲突。
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: wb-vllm
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - /models:/models
+      - ./vllm/start.sh:/start.sh
+    ipc: host
+    shm_size: "16gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["bash", "/start.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 600s
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: wb-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: wb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wbadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wbsecret}
+      POSTGRES_DB: ${POSTGRES_DB:-workbuddy}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wbadmin}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: wb-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: wb-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # 服务连接
+      VLLM_API_BASE: ${VLLM_API_BASE:-http://vllm:8000}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-wbadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wbsecret}
+      POSTGRES_DB: ${POSTGRES_DB:-workbuddy}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # 模型与鉴权
+      MODEL_PATH: ${MODEL_PATH:-/models/Qwen3-235B-A22B}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      # 可观测（Langfuse）
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+    depends_on:
+      vllm:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    container_name: wb-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_BASE: ${REACT_APP_API_BASE:-http://localhost:8080}
+      REACT_APP_LANGFUSE_HOST: ${LANGFUSE_HOST:-http://localhost:3100}
+    depends_on:
+      - backend
+
+  langfuse-server:
+    image: langfuse/langfuse:latest
+    container_name: wb-langfuse-server
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wbadmin}:${POSTGRES_PASSWORD:-wbsecret}@postgres:5432/${POSTGRES_DB:-workbuddy}
+      NEXTAUTH_SECRET: ${JWT_SECRET:-change-me-jwt-secret}
+      NEXTAUTH_URL: ${LANGFUSE_HOST:-http://localhost:3100}
+      SALT: ${LANGFUSE_SALT:-change-me-salt}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:latest
+    container_name: wb-langfuse-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wbadmin}:${POSTGRES_PASSWORD:-wbsecret}@postgres:5432/${POSTGRES_DB:-workbuddy}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-dev}
+    depends_on:
+      - langfuse-server
+      - redis
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: wb-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wb-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  qdrant_data:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

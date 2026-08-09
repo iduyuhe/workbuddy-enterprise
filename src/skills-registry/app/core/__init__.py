@@ -1,0 +1,1 @@
+"""skills-registry core package."""

@@ -1,0 +1,37 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+*.sqlite
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== Node / 前端 =====
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# ===== 环境变量与密钥 =====
+.env
+.env.*
+!.env.example
+
+# ===== 日志 =====
+*.log
+
+# ===== WorkBuddy 内部数据 =====
+.workbuddy/
+
+# ===== 大模型权重（体积巨大，绝不入库）=====
+/models/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db

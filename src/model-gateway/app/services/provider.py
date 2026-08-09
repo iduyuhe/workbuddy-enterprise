@@ -1,0 +1,177 @@
+"""Provider abstraction + routing for model-gateway.
+
+Each provider speaks the OpenAI-compatible /v1/chat/completions protocol
+(vLLM, SGLang, and most OpenAI-compatible endpoints). Claude is optional.
+When a real backend is unreachable and ENABLE_MOCK is on, we fall back to a
+built-in mock SSE stream so the MVP loop runs without a GPU.
+"""
+from __future__ import annotations
+
+import json
+import time
+import uuid
+
+import httpx
+
+from app.core.config import ENABLE_MOCK, MODEL_CATALOG
+
+
+class ProviderError(Exception):
+    pass
+
+
+class BaseProvider:
+    name: str = "base"
+
+    async def chat_stream(self, payload: dict) -> "AsyncGenerator[str, None]":
+        raise NotImplementedError
+
+    async def chat(self, payload: dict) -> dict:
+        raise NotImplementedError
+
+
+class OpenAICompatibleProvider(BaseProvider):
+    def __init__(self, name: str, base_url: str, api_key_ref: str | None = None):
+        self.name = name
+        self.base_url = base_url.rstrip("/")
+        self.api_key_ref = api_key_ref
+
+    async def _post(self, payload: dict, stream: bool) -> httpx.Response:
+        headers = {"Content-Type": "application/json"}
+        # TODO: resolve real API key from secret manager via api_key_ref (BYOK/tenant).
+        # trust_env=False so localhost/vLLM endpoints are not routed through a system proxy.
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0), trust_env=False) as client:
+            resp = await client.post(
+                f"{self.base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+                params={"stream": "true"} if stream else None,
+            )
+            resp.raise_for_status()
+            return resp
+
+    async def chat_stream(self, payload: dict):
+        try:
+            resp = await self._post(dict(payload, stream=True), stream=True)
+            async for chunk in resp.aiter_text():
+                yield chunk
+        except (httpx.HTTPError, ProviderError) as e:
+            if ENABLE_MOCK:
+                async for c in mock_stream(payload, cause=str(e)):
+                    yield c
+            else:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    async def chat(self, payload: dict) -> dict:
+        try:
+            resp = await self._post(dict(payload, stream=False), stream=False)
+            return resp.json()
+        except httpx.HTTPError as e:
+            if ENABLE_MOCK:
+                return mock_chat(payload, cause=str(e))
+            raise ProviderError(str(e)) from e
+
+
+class ClaudeProvider(BaseProvider):
+    """Optional Claude backend (Bedrock / API). TODO: full adapter."""
+
+    name = "claude"
+
+    async def chat_stream(self, payload: dict):
+        # TODO: implement Claude Messages API streaming adapter.
+        async for c in mock_stream(payload, cause="claude provider not configured (TODO)"):
+            yield c
+
+    async def chat(self, payload: dict) -> dict:
+        return mock_chat(payload, cause="claude provider not configured (TODO)")
+
+
+# ---------- mock fallback ----------
+def _sse(event_dict: dict) -> str:
+    return f"data: {json.dumps(event_dict, ensure_ascii=False)}\n\n"
+
+
+async def mock_stream(payload: dict, cause: str = ""):
+    model = payload.get("model", "mock")
+    rid = "chatcmpl-" + uuid.uuid4().hex[:12]
+    prompt = ""
+    for m in payload.get("messages", []):
+        if m.get("role") == "user":
+            prompt = m.get("content", "")
+            break
+    words = f"[mock] 未连接真实推理后端({cause})。回显你的问题：{prompt}".split()
+    yield _sse({"id": rid, "object": "chat.completion.chunk", "model": model,
+                "choices": [{"index": 0, "delta": {"role": "assistant"}}]})
+    for w in words:
+        yield _sse({"id": rid, "object": "chat.completion.chunk", "model": model,
+                    "choices": [{"index": 0, "delta": {"content": w + " "}}]})
+    yield _sse({"id": rid, "object": "chat.completion.chunk", "model": model,
+                "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]})
+    yield _sse({"id": rid, "model": model, "usage": {"prompt_tokens": 0, "completion_tokens": len(words)}})
+    yield "data: [DONE]\n\n"
+
+
+def mock_chat(payload: dict, cause: str = "") -> dict:
+    model = payload.get("model", "mock")
+    rid = "chatcmpl-" + uuid.uuid4().hex[:12]
+    prompt = ""
+    for m in payload.get("messages", []):
+        if m.get("role") == "user":
+            prompt = m.get("content", "")
+            break
+    text = f"[mock] 未连接真实推理后端({cause})。回显你的问题：{prompt}"
+    return {
+        "id": rid,
+        "object": "chat.completion",
+        "model": model,
+        "created": int(time.time()),
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 0, "completion_tokens": len(text)},
+    }
+
+
+# ---------- router ----------
+class Router:
+    def __init__(self):
+        self.providers: dict[str, BaseProvider] = {}
+        self.route_table: dict[str, dict] = {}  # project_id -> {prefer:[], fallback}
+
+    def register(self, provider: BaseProvider):
+        self.providers[provider.name] = provider
+
+    def resolve(self, model: str | None) -> BaseProvider:
+        # explicit model -> catalog provider
+        if model and model in MODEL_CATALOG:
+            pname = MODEL_CATALOG[model]["provider"]
+            if pname in self.providers:
+                return self.providers[pname]
+        # prefix heuristic
+        if model and model.startswith("qwen"):
+            if "vllm" in self.providers:
+                return self.providers["vllm"]
+        if model and model.startswith("deepseek"):
+            if "sglang" in self.providers:
+                return self.providers["sglang"]
+        if model and "claude" in model:
+            if "claude" in self.providers:
+                return self.providers["claude"]
+        # first enabled / any
+        if self.providers:
+            return next(iter(self.providers.values()))
+        # absolute fallback
+        return ClaudeProvider()
+
+
+# module-level singleton router
+router = Router()
+
+
+def build_default_providers():
+    from app.core.config import CLAUDE_API_BASE, DEEPSEEK_API_BASE, VLLM_API_BASE
+
+    router.register(OpenAICompatibleProvider("vllm", VLLM_API_BASE))
+    router.register(OpenAICompatibleProvider("sglang", DEEPSEEK_API_BASE))
+    if CLAUDE_API_BASE:
+        router.register(OpenAICompatibleProvider("claude", CLAUDE_API_BASE))
+    else:
+        router.register(ClaudeProvider())
