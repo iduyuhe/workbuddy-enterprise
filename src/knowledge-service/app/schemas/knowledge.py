@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class KnowledgeBaseCreate(BaseModel):
     name: str
     project_id: Optional[UUID] = None
+    tenant_id: Optional[str] = None
     embedding: str = "bge-m3"
 
 
@@ -14,6 +15,7 @@ class KnowledgeBaseOut(BaseModel):
     id: UUID
     name: str
     project_id: Optional[UUID] = None
+    tenant_id: Optional[str] = None
     embedding: str
     collection: Optional[str] = None
     created_at: Optional[str] = None

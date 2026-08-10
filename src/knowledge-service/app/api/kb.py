@@ -19,7 +19,7 @@ router = APIRouter()
 
 def _to_kb_out(kb: KnowledgeBase) -> KnowledgeBaseOut:
     return KnowledgeBaseOut(
-        id=kb.id, name=kb.name, project_id=kb.project_id,
+        id=kb.id, name=kb.name, project_id=kb.project_id, tenant_id=kb.tenant_id,
         embedding=kb.embedding, collection=kb.collection,
         created_at=kb.created_at.isoformat() if kb.created_at else None,
     )
@@ -29,7 +29,7 @@ def _to_kb_out(kb: KnowledgeBase) -> KnowledgeBaseOut:
 def create_kb(payload: KnowledgeBaseCreate, db: Session = Depends(get_db)):
     collection = f"kb_{uuid.uuid4().hex[:12]}"
     kb = KnowledgeBase(
-        name=payload.name, project_id=payload.project_id,
+        name=payload.name, project_id=payload.project_id, tenant_id=payload.tenant_id,
         embedding=payload.embedding, collection=collection,
     )
     db.add(kb)
@@ -51,11 +51,15 @@ def create_kb(payload: KnowledgeBaseCreate, db: Session = Depends(get_db)):
 @router.get("/kb")
 def list_kb(
     project_id: uuid.UUID | None = Query(None),
+    tenant_id: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     stmt = select(KnowledgeBase)
     if project_id is not None:
         stmt = stmt.where(KnowledgeBase.project_id == project_id)
+    # 多租户：按租户隔离（tenant_id 为空串/NULL 视为未指定）
+    if tenant_id:
+        stmt = stmt.where(KnowledgeBase.tenant_id == tenant_id)
     rows = db.scalars(stmt.order_by(KnowledgeBase.created_at.desc())).all()
     return {"items": [_to_kb_out(k).model_dump() for k in rows], "total": len(rows)}
 

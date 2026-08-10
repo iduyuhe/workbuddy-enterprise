@@ -71,3 +71,15 @@ async def export_events(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=audit_export.csv"},
     )
+
+
+@api.get("/audit/events/{event_id}/verify")
+async def verify_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
+):
+    if not x_user_id:
+        raise HTTPException(status_code=403, detail="internal only")
+    ok = audit_service.verify_event_integrity(db, event_id)
+    return {"id": event_id, "integrity_ok": ok}

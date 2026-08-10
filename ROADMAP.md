@@ -24,12 +24,12 @@ WorkBuddy Enterprise Edition 采用「先跑通最小闭环、再阶梯式增强
 - [x] **前端完善**：`npm run build` 通过（修复 tsconfig + Chat.tsx 导入）；OIDC 回调落地（授权码流程 + 前端 token 落地）；知识库文档列表已实现。**知识库项目切换 UX 补完**：切换知识库时经 `listDocuments` 回填文档列表并带加载态/空态，未终态（pending/parsing）文档继续轮询至 indexed/failed（详见第 16 节）
 - [x] **OIDC 单点登录真实回调（E2E 验证）**：手写 `oidc.py`（discovery + authorize URL + code 换 token + jwks RS256 验签 + 自动开通用户）已配合**真实 dev RS256 IdP**（`dev_oidc_idp.py`）做完整授权码闭环真实验证：`/auth/login` → IdP `/authorize` 自动发码回跳 → `/auth/callback` 换 token + 验签 → 自动开通用户并发平台 JWT → `/auth/me` 返回用户。修复 `oidc_login_start` 把 cookie 设在注入 `Response` 参数而非返回的 `RedirectResponse` 导致 `oidc_state` CSRF cookie 丢失的 latent bug，`run_oidc_e2e.sh` + `e2e_verify_oidc.py` 6 项断言全绿（详见第 14 节）
 
-## 🔜 阶段 3 · 合规与信创
+## ✅ 阶段 3 · 合规与信创（已完成 · 2026-08-10）
 
-- [ ] **信创适配**：鲲鹏 / 海光 / 飞腾 CPU，统信 UOS / 麒麟 OS，达梦 / 人大金仓库
-- [ ] **等保三级**：专控项落地（身份鉴别、访问控制、安全审计、入侵防范、数据完整性与保密性）
-- [ ] **密评**：国密算法（SM2/SM3/SM4）支持
-- [ ] **多租户**：组织 / 租户隔离，企业级账号体系
+- [x] **信创适配**：`shared/db/connect.py` 连接串归一化（KingBaseES / openGauss 复用 `postgresql+psycopg2` 方言，达梦透传 `dm://`），6 服务 `DATABASE_URL` 统一经 `normalize_database_url()`；单测 6/6 全绿，`XINCHUANG_DEPLOY.md` 给出适配矩阵与可移植性结论（详见 `VERIFICATION_REPORT.md` 第 17 节）
+- [x] **等保三级**：身份鉴别（密码复杂度 + 登录失败锁定）、访问控制（网关 per-IP 限流 + 安全响应头）、安全审计（审计明细 SM4 落盘加密 + SM3 完整性哈希防篡改）、入侵防范（限流中间件）、数据完整性与保密性（国密加密落盘）专控项全部落地，E2E 验证全绿（详见第 18 节）
+- [x] **密评**：`shared/crypto/sm.py` 封装国密 SM2/SM3/SM4（gmssl），SM3('abc') 与 GB/T 32905 标准向量一致，SM2 签名/验签/加解密、SM4 roundtrip 单测 8/8 全绿（详见第 19 节）
+- [x] **多租户**：核心模型加 `tenant_id` 列，列表端点按 `tenant_id` 过滤（ORM 级 + API 级双重隔离）；auth(users/projects) / knowledge(knowledge_bases) / agent(agent_runs) 0003 迁移真实 PG `upgrade head` 验证 `tenant_id` 列就位，跨租户不可见 E2E 全绿（详见第 20 节）
 
 ## 🔜 阶段 4 · 规模交付与生态
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Column, ForeignKey, String, Table, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
@@ -53,8 +53,13 @@ class User(Base):
     display_name = Column(String(256), nullable=True)
     email = Column(String(256), unique=True, nullable=True)
     idp = Column(String(64), default="local")
+    # 多租户：租户隔离键（平台级/未分租户为 NULL）
+    tenant_id = Column(String(36), nullable=True, index=True)
     password_hash = Column(String(256), nullable=True)  # local accounts only
     status = Column(String(16), default="active")
+    # 等保三级 · 身份鉴别：登录失败计数与锁定截止时间（epoch 秒）
+    failed_login_count = Column(Integer, default=0, nullable=True)
+    locked_until = Column(BigInteger, nullable=True)
     created_at = Column(Text, default=lambda: __import__("datetime").datetime.utcnow().isoformat())
 
     roles = relationship(

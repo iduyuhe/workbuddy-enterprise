@@ -4,9 +4,11 @@ from __future__ import annotations
 import os
 
 from sqlalchemy import create_engine
+
+from shared.db.connect import normalize_database_url
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = os.getenv("AGENT_DATABASE_URL", "sqlite:///./agent-service_ctl.db")
+DATABASE_URL = normalize_database_url(os.getenv("AGENT_DATABASE_URL", "sqlite:///./agent-service_ctl.db"))
 _connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(DATABASE_URL, connect_args=_connect_args)

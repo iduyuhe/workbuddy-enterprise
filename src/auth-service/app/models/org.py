@@ -16,6 +16,8 @@ class Project(Base):
     name = Column(String(128), nullable=False)
     description = Column(String(256), nullable=True)
     owner_id = Column(_UUID, ForeignKey("users.id"), nullable=True)
+    # 多租户：项目归属租户
+    tenant_id = Column(String(36), nullable=True, index=True)
     created_at = Column(Text, default=lambda: __import__("datetime").datetime.utcnow().isoformat())
 
 

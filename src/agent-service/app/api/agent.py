@@ -5,7 +5,7 @@ import json
 import uuid
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.core.db import SessionLocal
@@ -118,12 +118,15 @@ def list_tools():
 
 
 @router.get("/agent/runs")
-def list_runs(limit: int = 20):
+def list_runs(limit: int = 20, tenant_id: str | None = Query(None)):
     db = SessionLocal()
     try:
+        q = db.query(AgentRun)
+        # 多租户：按租户隔离
+        if tenant_id:
+            q = q.where(AgentRun.tenant_id == tenant_id)
         rows = (
-            db.query(AgentRun)
-            .order_by(AgentRun.created_at.desc())
+            q.order_by(AgentRun.created_at.desc())
             .limit(min(limit, 100))
             .all()
         )

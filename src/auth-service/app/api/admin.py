@@ -1,7 +1,7 @@
 """Admin CRUD: users / roles(+permissions) / projects(+members)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,15 +29,21 @@ class CreateUserReq(BaseModel):
 def list_users(
     principal: Principal = Depends(get_principal),
     db: Session = Depends(get_db),
+    tenant_id: str | None = Query(None),
     page: int = 1,
     size: int = 20,
 ):
-    stmt = select(User).order_by(User.username)
-    total = len(db.execute(select(User.id)).all())
-    rows = db.execute(stmt.limit(size).offset((page - 1) * size)).scalars().all()
+    stmt = select(User)
+    # 多租户：按租户隔离
+    if tenant_id:
+        stmt = stmt.where(User.tenant_id == tenant_id)
+    total = len(db.execute(stmt.with_only_columns(User.id)).all())
+    rows = db.execute(
+        stmt.order_by(User.username).limit(size).offset((page - 1) * size)
+    ).scalars().all()
     items = [
         {"id": u.id, "username": u.username, "display_name": u.display_name,
-         "email": u.email, "idp": u.idp, "status": u.status}
+         "email": u.email, "idp": u.idp, "status": u.status, "tenant_id": u.tenant_id}
         for u in rows
     ]
     return {"items": items, "total": total, "page": page, "size": size}

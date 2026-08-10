@@ -17,6 +17,8 @@ class KnowledgeBase(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    # 多租户：知识库归属租户
+    tenant_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
     embedding: Mapped[str] = mapped_column(String(64), default="bge-m3")
     collection: Mapped[str | None] = mapped_column(String(128))  # Qdrant collection 名
     created_at: Mapped[object] = mapped_column(DateTime(timezone=True), server_default=func.now())

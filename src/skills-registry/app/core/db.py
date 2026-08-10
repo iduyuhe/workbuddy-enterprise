@@ -1,9 +1,11 @@
 """SQLAlchemy 引擎 / session / Base。URL 来自 env DATABASE_URL（默认 sqlite）。"""
 import os
 from sqlalchemy import create_engine
+
+from shared.db.connect import normalize_database_url
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./skills.db")
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", "sqlite:///./skills.db"))
 
 _connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, connect_args=_connect_args, future=True)

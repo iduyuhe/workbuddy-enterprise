@@ -23,6 +23,7 @@ class AgentRun(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id = Column(String(36), nullable=True, index=True)
+    tenant_id = Column(String(36), nullable=True, index=True)
     user_id = Column(String(36), nullable=True, index=True)
     thread_id = Column(String(36), nullable=True, index=True)
     prompt = Column(Text, nullable=True)

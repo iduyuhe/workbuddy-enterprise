@@ -38,4 +38,8 @@ class AuditLog(Base):
     tokens_in = Column(Integer, nullable=True)
     tokens_out = Column(Integer, nullable=True)
     ip = Column(String(64), nullable=True)
-    detail_json = Column(Text, nullable=True)  # JSON string
+    detail_json = Column(Text, nullable=True)  # JSON string（加密存储时为 SM4 密文 base64）
+    # 等保三级 · 数据保密性：detail_json 是否以 SM4 加密存储（1=加密，0=明文）
+    enc_ver = Column(Integer, default=1, nullable=True)
+    # 等保三级 · 数据完整性：对记录关键字段做 SM3 杂凑，防篡改
+    integrity_hash = Column(String(64), nullable=True)

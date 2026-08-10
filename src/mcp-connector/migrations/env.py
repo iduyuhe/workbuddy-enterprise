@@ -14,6 +14,8 @@ import sys
 
 # service root on path so `app` is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# repo src on path so `shared` package is importable (db.py imports shared.db.connect)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool

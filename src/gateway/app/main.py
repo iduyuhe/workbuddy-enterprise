@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import proxy
 from app.core.client import make_client
+from app.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 
 app = FastAPI(title="WorkBuddy Enterprise gateway", version="1.0.0")
 app.add_middleware(
@@ -20,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# 等保三级：传输安全响应头（先于 CORS 注入，确保覆盖所有响应）
+app.add_middleware(SecurityHeadersMiddleware)
+# 等保三级：按 IP 固定窗口限流（防爆破 / 防 DoS）
+app.add_middleware(RateLimitMiddleware)
 
 app.include_router(proxy.router)
 
