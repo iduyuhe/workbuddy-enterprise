@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, Response
 
 from app.core.client import client_ip
 from app.core.config import (
+    AGENT_SERVICE_URL,
     AUDIT_SERVICE_URL,
     AUTH_SERVICE_URL,
     KB_SERVICE_URL,
@@ -28,6 +29,7 @@ SERVICE_BY_PREFIX = {
     "/api/skills": SKILLS_SERVICE_URL,
     "/api/mcp": MCP_SERVICE_URL,
     "/api/audit": AUDIT_SERVICE_URL,
+    "/api/agent": AGENT_SERVICE_URL,
 }
 
 # public (no auth / no rbac) endpoints
@@ -68,6 +70,8 @@ def derive_rbac_action(path: str, method: str) -> str | None:
         res = "mcp"
     elif path.startswith("/api/audit"):
         res = "audit"
+    elif path.startswith("/api/agent"):
+        res = "agent"
     else:
         return None
 

@@ -36,12 +36,18 @@ done
 | mcp-connector | 8004 | MCP 连接器管理 |
 | knowledge-service | 8005 | 企业知识库 RAG（解析→切片→向量→检索） |
 | audit-service | 8006 | 审计事件写入与查询（内部接口，仅网关可调用） |
+| agent-service | 8007 | Agent 运行时（LangGraph ReAct：RAG / 技能 / MCP 真实编排） |
 
-各服务独立启动（以 knowledge-service 为例）：
+各服务独立启动。由于代码跨服务共享 `src/shared` 包，启动时必须让 `src` 在 `PYTHONPATH` 上（否则 `from shared...` 会 ImportError）。推荐在 `src/<service>` 目录内启动并把仓库 `src` 加入 `PYTHONPATH`：
+
 ```bash
+# 以 knowledge-service 为例（agent-service / gateway 等同理）
 cd src/knowledge-service
-uvicorn app.main:app --port 8005
+PYTHONPATH=/绝对路径/enterprise-platform-plan/src uvicorn app.main:app --port 8005
 ```
+
+> 注意：仓库内每个服务自身的 `app` 包位于 `src/<service>/app`，`cd` 进服务目录后 `app` 可解析；`shared` 需靠 `PYTHONPATH=src` 解析。两者同时具备才能正常启动。
+
 前端只对接 gateway `:8000`；开发期 vite 代理 `/api` → `:8000`，生产由 nginx 反代。
 
 ---
@@ -141,11 +147,55 @@ curl -s -X POST http://localhost:8005/kb/$KB/search -H 'Content-Type: applicatio
 
 # 3) 审计（必须经网关；直接打 audit :8006 返回 403 为安全设计）
 curl -s http://localhost:8000/api/audit/events -H "Authorization: Bearer $TOKEN"
+
+# 4) Agent 运行时（:8007，需先建好 KB / 技能 / MCP server 并代入对应 ID）
+#    开启网关 agent 路由后，也可直接打网关 /api/v1/chat（自动转发到 :8007）
+curl -s -X POST http://localhost:8007/agent/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"agent-mock","messages":[{"role":"user","content":"请帮我检索知识库中关于私有化部署的文档"}]}'
+# 返回 {run_id, answer, steps, model}；steps 记录每次工具调用（search_kb / use_skill / call_mcp_tool）
 ```
+
+> 启用 Agent 对话：gateway 设 `AGENT_CHAT_ENABLED=true` + `AGENT_SERVICE_URL=http://localhost:8007`，
+> 之后 `POST /api/v1/chat` 会自动走 agent-runtime 编排（输入/输出均经内容审核）。
 
 ---
 
-## 9. 常见问题
+## 9. Agent 运行时与内容审核（阶段 2 新增）
+
+### 9.1 Agent 运行时（agent-service :8007）
+
+基于 LangGraph `StateGraph` 的 ReAct 循环，LLM 自主决定调用企业能力：`search_kb` / `use_skill` / `call_mcp_tool`。
+两种 LLM 后端（同一套图，靠 `AGENT_ENABLE_MOCK_LLM` 切换）：
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `AGENT_ENABLE_MOCK_LLM` | `true` | `true`=确定性规则路由（无 GPU 环境验证全链路）；`false`=打 model-gateway 走真实工具调用 |
+| `AGENT_MAX_STEPS` | `8` | 单轮对话最大工具调用步数（防无限循环） |
+| `AGENT_DEFAULT_KB_ID` | 空 | mock 路由 `search_kb` 时使用的知识库 ID |
+| `AGENT_DEFAULT_SKILL_ID` | 空 | mock 路由 `use_skill` 时使用的技能 ID |
+| `AGENT_DEFAULT_MCP_SERVER_ID` | 空 | mock 路由 `call_mcp_tool` 时使用的 MCP server ID |
+| `AGENT_DEFAULT_MCP_TOOL` | `echo` | 默认 MCP 工具名 |
+| `AGENT_SERVICE_PORT` | `8007` | 服务端口 |
+
+> 真实 LLM 模式（`AGENT_ENABLE_MOCK_LLM=false`）需要 model-gateway 后端接好 vLLM/SGLang（OpenAI 工具调用协议）。
+
+### 9.2 内容审核管线（shared/moderation.py）
+
+私有化部署合规护栏：防 PII / 涉密 / 暴力违法内容泄漏。纯正则 + 可配置词表，无外部依赖，可离线运行。
+gateway（输入侧）与 agent-service（输入 + 输出侧）均已接入。
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `MODERATION_ENABLED` | `true` | 总开关 |
+| `MODERATION_MODE` | `redact` | `redact`（脱敏后放行）/ `block`（直接拒绝）/ `log`（仅记录） |
+| `MODERATION_WORDLIST` | 空 | 敏感词表文件路径（每行一词，可扩充涉密/业务词），避免硬编码进代码库 |
+
+- PII 检测：身份证 / 手机号 / 银行卡 / 邮箱（正则），`block` 模式直接拒，`redact` 模式打码。
+- 敏感词：涉密级别词（绝密/机密/…）与暴力违法词（通用样例）；`block` 模式硬性拦截，`redact`/`log` 仅记录原因。
+- 词表默认仅含通用样例，**不内置任何政治实体词**；企业应按等保/合规要求自行维护词表文件。
+
+## 10. 常见问题
 
 | 现象 | 原因 / 解决 |
 |---|---|

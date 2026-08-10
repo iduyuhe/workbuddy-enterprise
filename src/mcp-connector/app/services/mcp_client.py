@@ -35,7 +35,7 @@ async def _jsonrpc_post(endpoint: str, method: str, params: dict, timeout: float
     #   2) 将请求 POST 到 <endpoint>?session_id=... 的 messages 端点
     #   3) 从 SSE 流中按 id 匹配本次响应
     # 当前实现直接 POST 到 endpoint，适配 streamable-http / 简化 HTTP MCP server。
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
         resp = await client.post(
             endpoint,
             json=payload,
