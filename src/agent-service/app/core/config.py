@@ -21,6 +21,9 @@ KB_SERVICE_URL = _env("KB_SERVICE_URL", "http://localhost:8005")
 
 # 编排参数
 AGENT_MAX_STEPS = int(_env("AGENT_MAX_STEPS", "8"))
+# 默认模型名：真实模式下 agent 把该模型名发给 model-gateway 以路由到对应 provider。
+# 默认 "agent-mock" 仅作占位；接好真实 LLM 后设 AGENT_DEFAULT_MODEL=agent-real（或供应商模型名）。
+AGENT_DEFAULT_MODEL = _env("AGENT_DEFAULT_MODEL", "agent-mock")
 # 默认开启 mock LLM：本仓库 MVP 常在无 GPU/vLLM 的环境运行，
 # 设为 true 时走确定性规则路由（可验证 ReAct 全链路）；
 # 接好 vLLM/SGLang 后设 false，走真实 LangGraph + 工具调用。

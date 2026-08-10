@@ -31,14 +31,16 @@ class BaseProvider:
 
 
 class OpenAICompatibleProvider(BaseProvider):
-    def __init__(self, name: str, base_url: str, api_key_ref: str | None = None):
+    def __init__(self, name: str, base_url: str, api_key: str | None = None):
         self.name = name
         self.base_url = base_url.rstrip("/")
-        self.api_key_ref = api_key_ref
+        self.api_key = api_key
 
     async def _post(self, payload: dict, stream: bool) -> httpx.Response:
         headers = {"Content-Type": "application/json"}
-        # TODO: resolve real API key from secret manager via api_key_ref (BYOK/tenant).
+        # BYOK：外部端点需要鉴权；本地 vLLM/SGLang 通常不需要（api_key=None 时省略）。
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         # trust_env=False so localhost/vLLM endpoints are not routed through a system proxy.
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0), trust_env=False) as client:
             resp = await client.post(
@@ -155,8 +157,10 @@ class Router:
         if model and "claude" in model:
             if "claude" in self.providers:
                 return self.providers["claude"]
-        # first enabled / any
+        # first enabled / any（末级回退优先 external，保证配置 BYOK 端点时不被本地不可达的 vLLM 抢走）
         if self.providers:
+            if "external" in self.providers:
+                return self.providers["external"]
             return next(iter(self.providers.values()))
         # absolute fallback
         return ClaudeProvider()
@@ -167,7 +171,14 @@ router = Router()
 
 
 def build_default_providers():
-    from app.core.config import CLAUDE_API_BASE, DEEPSEEK_API_BASE, VLLM_API_BASE
+    from app.core.config import (
+        CLAUDE_API_BASE,
+        DEEPSEEK_API_BASE,
+        LLM_API_BASE,
+        LLM_API_KEY,
+        LLM_MODEL,
+        VLLM_API_BASE,
+    )
 
     router.register(OpenAICompatibleProvider("vllm", VLLM_API_BASE))
     router.register(OpenAICompatibleProvider("sglang", DEEPSEEK_API_BASE))
@@ -175,3 +186,8 @@ def build_default_providers():
         router.register(OpenAICompatibleProvider("claude", CLAUDE_API_BASE))
     else:
         router.register(ClaudeProvider())
+    # 外部 BYOK 端点：LLM_API_BASE 配置后注册为 "external" provider，
+    # 并把 LLM_MODEL 注入路由表，使 agent 按该模型名命中真实云端 LLM。
+    if LLM_API_BASE:
+        router.register(OpenAICompatibleProvider("external", LLM_API_BASE, api_key=LLM_API_KEY or None))
+        MODEL_CATALOG[LLM_MODEL] = {"provider": "external", "context_window": 128000}

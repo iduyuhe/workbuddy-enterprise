@@ -15,9 +15,9 @@ WorkBuddy Enterprise Edition 采用「先跑通最小闭环、再阶梯式增强
 
 - [x] **生产数据层 · Qdrant**：知识库支持 `QDRANT_URL`（独立服务端）/ `QDRANT_LOCAL_PATH`（嵌入式本地引擎，已真实验证）/ InMemory（dev）三级；RAG 闭环走真实 Qdrant 引擎
 - [ ] **生产数据层 · PostgreSQL**：所有服务 `DATABASE_URL` 已配置化（默认 sqlite），docker-compose 已注入 PG；本环境无 PG 服务，未端到端验证
-- [x] **Agent 运行时**：LangGraph `StateGraph` 编排 ReAct 循环，Skills / MCP / 知识库检索真实执行（无 GPU 时走 mock-LLM 确定性路由验证全链路）；gateway 已接入 `/api/v1/chat` 代理到 agent-service（2026-08-10 真实验证全绿）
+- [x] **Agent 运行时**：LangGraph `StateGraph` 编排 ReAct 循环，Skills / MCP / 知识库检索真实执行；`real_llm` 经 model-gateway 打真实 LLM（OpenAI 工具调用协议，解析 `tool_calls`），`AGENT_ENABLE_MOCK_LLM=false` 即切换；默认资源 ID 通过 system 提示注入，真实工具调用开箱即用（2026-08-10 真实路径 E2E 全绿）
 - [x] **内容审核**：`shared/moderation.py` 输入输出双通道管线，PII（手机/身份证/银行卡/邮箱）正则打码 + 涉密/暴力词表；支持 `block` / `redact` / `log` 三模式；agent 内部编排器用 `redact`、网关边缘用 `block`（2026-08-10 单元测试 + E2E 全绿）
-- [x] **多模型路由策略**：model-gateway 按模型名/前缀路由 vLLM / SGLang / Claude，真实 `/v1/chat/completions` 调用已具备（无 GPU 时优雅 mock）
+- [x] **多模型路由策略**：model-gateway 按模型名/前缀路由 vLLM / SGLang / Claude，并新增**外部 BYOK OpenAI 兼容 provider**（豆包 Ark / DeepSeek / 通义 / 智谱 等任意 `/v1/chat/completions` 端点，带 `Authorization: Bearer` 鉴权），由 `LLM_API_BASE` / `LLM_API_KEY` / `LLM_MODEL` 配置即插即用；无 GPU 时优雅 mock
 - [x] **前端完善**：`npm run build` 通过（修复 tsconfig + Chat.tsx 导入）；OIDC 回调落地（授权码流程 + 前端 token 落地）；知识库文档列表已实现（项目切换 UX 待补）
 
 ## 🔜 阶段 3 · 合规与信创

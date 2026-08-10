@@ -14,6 +14,15 @@ VLLM_API_BASE = _env("VLLM_API_BASE", "http://localhost:8080/v1")
 DEEPSEEK_API_BASE = _env("DEEPSEEK_API_BASE", "http://localhost:8081/v1")
 CLAUDE_API_BASE = _env("CLAUDE_API_BASE", "")  # optional
 
+# 外部 BYOK（Bring-Your-Own-Key）OpenAI 兼容端点：豆包 Ark / DeepSeek 官方 /
+# 通义 / 智谱 等任意 OpenAI 兼容 /v1/chat/completions 服务。
+# 配置 LLM_API_BASE 后即注册为 "external" provider，并按 LLM_MODEL 路由。
+# 例（豆包 Ark）：LLM_API_BASE=https://ark.cn-beijing.volces.com/api/v3
+#                LLM_API_KEY=xxx  LLM_MODEL=doubao-seed-1-6-250615
+LLM_API_BASE = _env("LLM_API_BASE", "")
+LLM_API_KEY = _env("LLM_API_KEY", "")
+LLM_MODEL = _env("LLM_MODEL", "agent-real")
+
 # When a real provider is unreachable, fall back to a built-in mock stream so the
 # MVP loop is runnable without a GPU. Set ENABLE_MOCK=false to disable.
 ENABLE_MOCK = _env("ENABLE_MOCK", "true").lower() in ("1", "true", "yes")

@@ -118,10 +118,24 @@ def _ai_with_tool(name: str, args: dict) -> dict:
 
 
 async def real_llm(http: httpx.AsyncClient, messages: list, model: str) -> dict:
-    """真实 LLM：打 model-gateway（OpenAI 工具调用协议），解析 tool_calls。"""
+    """真实 LLM：打 model-gateway（OpenAI 工具调用协议），解析 tool_calls。
+
+    关键：TOOLS schema 里 kb_id / skill_id / server_id 是必填且无默认值，真实 LLM
+    无法凭空得知应使用哪个资源。因此在消息头注入 system 提示，把默认资源 ID 与
+    可用 MCP 工具名告诉模型，使真实工具调用「开箱即用」。
+    """
+    system_prompt = (
+        "你是一个企业级智能体，可调用 search_kb / use_skill / call_mcp_tool 完成任务。\n"
+        f"- search_kb：默认知识库 ID = {AGENT_DEFAULT_KB_ID or 'default-kb'}\n"
+        f"- use_skill：默认技能 ID = {AGENT_DEFAULT_SKILL_ID or 'default-skill'}\n"
+        f"- call_mcp_tool：默认 MCP 服务器 ID = {AGENT_DEFAULT_MCP_SERVER_ID or 'default-srv'}，"
+        f"可用工具名 = {AGENT_DEFAULT_MCP_TOOL or 'echo'}\n"
+        "请根据用户意图选择工具，并使用上述默认 ID（除非用户明确指定其他 ID）。"
+    )
+    oai_messages = [{"role": "system", "content": system_prompt}] + _to_openai(messages)
     payload = {
         "model": model,
-        "messages": _to_openai(messages),
+        "messages": oai_messages,
         "tools": TOOLS,
         "tool_choice": "auto",
     }
@@ -158,22 +172,28 @@ def _extract_tc(tc: Any) -> tuple[str, str, dict]:
 
 
 def _to_openai(messages: list) -> list:
-    """把 LangGraph 消息对象或 dict 统一成 OpenAI dict。"""
+    """把 LangGraph 消息对象或 dict 统一成 OpenAI dict。
+
+    注意：LangGraph 的 add_messages 会把入参 dict 转换成 LangChain 消息对象存进
+    state，这些对象没有 .role 属性（只有 .type: human/ai/tool/system）。必须用
+    _msg_role() 正确映射 human->user / ai->assistant，否则用户消息会被误标成
+    assistant，真实 LLM 看不到用户问题。
+    """
     out = []
     for m in messages:
         if isinstance(m, dict):
             out.append(m)
             continue
-        role = getattr(m, "role", "assistant")
+        role = _msg_role(m)
         if role == "tool":
-            out.append({"role": "tool", "tool_call_id": m.tool_call_id, "content": m.content})
+            out.append({"role": "tool", "tool_call_id": getattr(m, "tool_call_id", ""), "content": getattr(m, "content", "")})
         elif role == "assistant":
             tcs = getattr(m, "tool_calls", None)
             if tcs:
                 out.append(
                     {
                         "role": "assistant",
-                        "content": m.content or "",
+                        "content": getattr(m, "content", None) or "",
                         "tool_calls": [
                             {
                                 "id": tc.get("id") if isinstance(tc, dict) else tc.id,
@@ -188,7 +208,7 @@ def _to_openai(messages: list) -> list:
                     }
                 )
             else:
-                out.append({"role": "assistant", "content": m.content or ""})
+                out.append({"role": "assistant", "content": getattr(m, "content", "") or ""})
         else:
             out.append({"role": role, "content": getattr(m, "content", "")})
     return out

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.core.db import SessionLocal
+from app.core.config import AGENT_DEFAULT_MODEL
 from app.models.run import AgentRun
 from app.services.agent_runtime import run_agent
 from app.services.catalog import build_agent_tools
@@ -29,7 +30,7 @@ def _last_user_text(messages: list) -> str:
 async def agent_chat(request: Request):
     payload = await request.json()
     messages = payload.get("messages", [])
-    model = payload.get("model", "agent-mock")
+    model = payload.get("model", AGENT_DEFAULT_MODEL)
     stream = bool(payload.get("stream", False))
     user_id = request.headers.get("X-User-Id", "anon")
     project_id = request.headers.get("X-Project-Id", "")
