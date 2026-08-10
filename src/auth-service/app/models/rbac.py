@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Column, ForeignKey, String, Table, Text
+from sqlalchemy import Boolean, Column, ForeignKey, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
@@ -30,12 +30,17 @@ role_permissions = Table(
     Column("permission_id", _UUID, ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True),
 )
 
+# 注意：project_id 必须可空（平台级角色 project_id 为 NULL）。
+# PostgreSQL 不允许主键列含 NULL，因此 user_roles 改用 surrogate 主键 + 唯一约束，
+# 而非把 project_id 放进复合主键（sqlite 容忍、PG 不容忍）。
 user_roles = Table(
     "user_roles",
     Base.metadata,
-    Column("user_id", _UUID, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-    Column("role_id", _UUID, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
-    Column("project_id", _UUID, nullable=True, primary_key=True),
+    Column("id", _UUID, primary_key=True, default=lambda: str(uuid.uuid4())),
+    Column("user_id", _UUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("role_id", _UUID, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False),
+    Column("project_id", _UUID, nullable=True),
+    UniqueConstraint("user_id", "role_id", "project_id", name="uq_user_role_project"),
 )
 
 

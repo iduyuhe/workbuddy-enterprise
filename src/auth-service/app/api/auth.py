@@ -47,12 +47,13 @@ def oidc_login_start(response: Response, redirect_uri: str | None = None):
     if not oidc.is_enabled():
         raise HTTPException(status_code=501, detail="OIDC not configured; use /auth/login/local")
     state, nonce = oidc.new_state_nonce()
-    # state 存 httpOnly cookie 防 CSRF；可选记录前端回跳地址
-    response.set_cookie("oidc_state", state, httponly=True, samesite="lax", path="/auth", max_age=600)
-    if redirect_uri:
-        response.set_cookie("oidc_redirect", redirect_uri, httponly=True, samesite="lax", path="/auth", max_age=600)
     url = oidc.build_authorize_url(state, nonce)
-    return RedirectResponse(url, status_code=302)
+    # 直接把 cookie 写到返回的 RedirectResponse 上（避免 FastAPI 未合并 response 参数的 cookie）
+    resp = RedirectResponse(url, status_code=302)
+    resp.set_cookie("oidc_state", state, httponly=True, samesite="lax", path="/auth", max_age=600)
+    if redirect_uri:
+        resp.set_cookie("oidc_redirect", redirect_uri, httponly=True, samesite="lax", path="/auth", max_age=600)
+    return resp
 
 
 @router.get("/auth/callback")
