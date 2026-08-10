@@ -12,6 +12,8 @@ DATABASE_URL = _env("DATABASE_URL", "sqlite:///./model_gateway.db")
 
 VLLM_API_BASE = _env("VLLM_API_BASE", "http://localhost:8080/v1")
 DEEPSEEK_API_BASE = _env("DEEPSEEK_API_BASE", "http://localhost:8081/v1")
+# 真实 DeepSeek 官方 OpenAI 兼容端点 + Key（deepseek-* 模型名直达，与通用 external BYOK 并存）。
+DEEPSEEK_API_KEY = _env("DEEPSEEK_API_KEY", "")
 CLAUDE_API_BASE = _env("CLAUDE_API_BASE", "")  # optional
 
 # 外部 BYOK（Bring-Your-Own-Key）OpenAI 兼容端点：豆包 Ark / DeepSeek 官方 /

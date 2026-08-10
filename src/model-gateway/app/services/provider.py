@@ -65,13 +65,38 @@ class OpenAICompatibleProvider(BaseProvider):
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     async def chat(self, payload: dict) -> dict:
-        try:
-            resp = await self._post(dict(payload, stream=False), stream=False)
-            return resp.json()
-        except httpx.HTTPError as e:
-            if ENABLE_MOCK:
-                return mock_chat(payload, cause=str(e))
-            raise ProviderError(str(e)) from e
+        # 真实云端 LLM 偶发 5xx（服务端限流/瞬时过载）或网络抖动：指数退避重试吸收，
+        # 仍失败才抛错（绝不再静默回退 mock，避免「假成功」）。仅在「未配置任何真实
+        # 后端」的纯本地 dev 场景才回退 mock（ENABLE_MOCK 且本地 localhost 不可达）。
+        import asyncio
+
+        last_err: Exception | None = None
+        for attempt in range(5):
+            try:
+                resp = await self._post(dict(payload, stream=False), stream=False)
+                return resp.json()
+            except httpx.HTTPStatusError as e:
+                last_err = ProviderError(
+                    f"{self.name} backend returned {e.response.status_code}: {e.response.text[:300]}"
+                )
+                if attempt < 4:
+                    await asyncio.sleep(2.0 * (attempt + 1))  # 2s,4s,6s,8s 退避
+                    continue
+                break
+            except httpx.HTTPError as e:
+                last_err = e
+                if attempt < 4:
+                    await asyncio.sleep(2.0 * (attempt + 1))
+                    continue
+                break
+        # 重试用尽：仅纯本地 dev（localhost + 无 api_key + ENABLE_MOCK）回退 mock
+        if ENABLE_MOCK and not self.api_key and "localhost" in self.base_url:
+            return mock_chat(payload, cause=str(last_err))
+        if isinstance(last_err, ProviderError):
+            raise last_err
+        if last_err is not None:
+            raise ProviderError(str(last_err)) from last_err
+        raise ProviderError("unknown error in chat")
 
 
 class ClaudeProvider(BaseProvider):
@@ -152,6 +177,9 @@ class Router:
             if "vllm" in self.providers:
                 return self.providers["vllm"]
         if model and model.startswith("deepseek"):
+            # 真实 DeepSeek 端点优先（deepseek-*）；未配置 Key 时退到本地 sglang/vLLM。
+            if "deepseek" in self.providers:
+                return self.providers["deepseek"]
             if "sglang" in self.providers:
                 return self.providers["sglang"]
         if model and "claude" in model:
@@ -174,6 +202,7 @@ def build_default_providers():
     from app.core.config import (
         CLAUDE_API_BASE,
         DEEPSEEK_API_BASE,
+        DEEPSEEK_API_KEY,
         LLM_API_BASE,
         LLM_API_KEY,
         LLM_MODEL,
@@ -186,8 +215,14 @@ def build_default_providers():
         router.register(OpenAICompatibleProvider("claude", CLAUDE_API_BASE))
     else:
         router.register(ClaudeProvider())
-    # 外部 BYOK 端点：LLM_API_BASE 配置后注册为 "external" provider，
-    # 并把 LLM_MODEL 注入路由表，使 agent 按该模型名命中真实云端 LLM。
+    # 真实 DeepSeek 官方端点：配置 DEEPSEEK_API_KEY 后注册为 "deepseek" provider，
+    # deepseek-* 模型名直达真实云端推理（支持 tool_calls）。与 external BYOK 互不冲突。
+    if DEEPSEEK_API_KEY:
+        router.register(OpenAICompatibleProvider("deepseek", "https://api.deepseek.com/v1", api_key=DEEPSEEK_API_KEY))
+        MODEL_CATALOG["deepseek-chat"] = {"provider": "deepseek", "context_window": 64000}
+        MODEL_CATALOG["deepseek-reasoner"] = {"provider": "deepseek", "context_window": 64000}
+    # 外部通用 BYOK 端点：LLM_API_BASE 配置后注册为 "external" provider，
+    # 并把 LLM_MODEL 注入路由表，使 agent 按该模型名命中任意 OpenAI 兼容云端 LLM。
     if LLM_API_BASE:
         router.register(OpenAICompatibleProvider("external", LLM_API_BASE, api_key=LLM_API_KEY or None))
         MODEL_CATALOG[LLM_MODEL] = {"provider": "external", "context_window": 128000}

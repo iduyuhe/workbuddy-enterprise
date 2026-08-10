@@ -139,8 +139,22 @@ async def real_llm(http: httpx.AsyncClient, messages: list, model: str) -> dict:
         "tools": TOOLS,
         "tool_choice": "auto",
     }
-    r = await http.post(f"{MODEL_GATEWAY_URL}/v1/chat", json=payload, timeout=120)
-    r.raise_for_status()
+    # 真实云端 LLM 可能偶发 4xx（如瞬时限流/边界拒绝）或网络抖动。加重试，避免单次
+    # 偶发错误中断整个 ReAct 循环；最终仍失败则原样抛出，交给上层处理。
+    import asyncio
+
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            r = await http.post(f"{MODEL_GATEWAY_URL}/v1/chat", json=payload, timeout=120)
+            r.raise_for_status()
+            break
+        except Exception as e:  # httpx 网络/状态码错误
+            last_err = e
+            if attempt < 2:
+                await asyncio.sleep(1.5 * (attempt + 1))
+                continue
+            raise
     data = r.json()
     msg = data["choices"][0]["message"]
     tcs = msg.get("tool_calls")
@@ -200,7 +214,12 @@ def _to_openai(messages: list) -> list:
                                 "type": "function",
                                 "function": {
                                     "name": tc.get("name") if isinstance(tc, dict) else tc.name,
-                                    "arguments": tc.get("args") if isinstance(tc, dict) else (tc.args or {}),
+                                    # OpenAI 协议要求 arguments 是 JSON 字符串（非 dict）。
+                                    # LangChain 的 tool_calls.args 是 dict，必须序列化回去。
+                                    "arguments": json.dumps(
+                                        tc.get("args") if isinstance(tc, dict) else (tc.args or {}),
+                                        ensure_ascii=False,
+                                    ),
                                 },
                             }
                             for tc in tcs
