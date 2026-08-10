@@ -5,15 +5,17 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String, Text
-from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
-from sqlalchemy.types import JSON as GenericJSON
 
-from app.core.db import Base
+from app.core.db import DATABASE_URL, Base
 
-try:  # sqlite 用原生 JSON 类型；PG 用通用 JSON
-    _JSON = SQLiteJSON
+# SQLite 用原生 JSON 类型（落为 TEXT/亲和类型）；PostgreSQL 用通用 JSON（落为 JSONB）。
+try:
+    if DATABASE_URL.startswith("sqlite"):
+        from sqlalchemy.dialects.sqlite import JSON as _JSON
+    else:
+        from sqlalchemy.types import JSON as _JSON
 except Exception:  # pragma: no cover
-    _JSON = GenericJSON
+    from sqlalchemy.types import JSON as _JSON
 
 
 class AgentRun(Base):

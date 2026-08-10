@@ -1,0 +1,25 @@
+# WorkBuddy 极简 PG compose（仅 PG 服务）。开发联调用。
+# 默认凭据 wbadmin/wbsecret/workbuddy；生产请替换 .env.pg 为强随机。
+#
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wb-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wbadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wbsecret}
+      POSTGRES_DB: ${POSTGRES_DB:-workbuddy}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wbadmin} -d ${POSTGRES_DB:-workbuddy}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  pg_data:

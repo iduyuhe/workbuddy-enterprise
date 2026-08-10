@@ -26,3 +26,9 @@ def init_db():
     import app.models.run  # noqa: F401  ensure tables registered
 
     Base.metadata.create_all(bind=engine)
+
+
+# 启动时打印 dialect/url（脱敏密码）
+import re as _re
+_safe = _re.sub(r"://[^@]+@", "://***@", DATABASE_URL)
+print(f"[agent-db] dialect={engine.dialect.name} url={_safe}", flush=True)
