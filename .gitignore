@@ -28,6 +28,7 @@ build/
 
 # ===== WorkBuddy 内部数据 =====
 .workbuddy/
+tmp_alembic_trash/
 
 # ===== 运行时上传/解析临时目录 =====
 kb_uploads/

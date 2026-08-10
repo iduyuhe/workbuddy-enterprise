@@ -24,4 +24,19 @@ def get_db():
 
 def init_db() -> None:
     from app.models import mcp  # noqa: F401
-    Base.metadata.create_all(bind=engine)
+
+    import os
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        # alembic.ini / migrations live at the service root (3 levels up from app/core/db.py)
+        _here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        cfg = Config(os.path.join(_here, "alembic.ini"))
+        cfg.set_main_option("script_location", os.path.join(_here, "migrations"))
+        cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+        command.upgrade(cfg, "head")
+        print("[mcp-db] alembic upgrade head OK", flush=True)
+    except Exception as e:
+        print(f"[mcp-db] alembic unavailable ({e!r}); fallback create_all", flush=True)
+        Base.metadata.create_all(bind=engine)

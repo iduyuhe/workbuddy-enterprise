@@ -192,10 +192,17 @@ export async function getDocument(kbId: string, docId: string): Promise<Document
 }
 
 export async function listDocuments(kbId: string): Promise<DocumentMeta[]> {
-  // 契约未单列文档列表接口，复用 knowledge-service 列表约定；若后端未提供则回退空数组
+  // 后端 GET /kb/{kb_id}/documents 返回 DocumentStatus(document_id, ...)，
+  // 归一化为前端 DocumentMeta(id, ...) 以便文档表直接复用。
   try {
-    const resp = await client.get<DocumentMeta[]>(`/kb/${kbId}/documents`);
-    return resp.data;
+    const resp = await client.get<any[]>(`/kb/${kbId}/documents`);
+    return (resp.data ?? []).map((d) => ({
+      id: d.document_id,
+      kb_id: d.kb_id,
+      title: d.title,
+      status: d.status,
+      chunk_count: d.chunk_count,
+    }));
   } catch {
     return [];
   }

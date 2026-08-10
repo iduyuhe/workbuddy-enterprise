@@ -3,6 +3,7 @@ import {
   listProjects,
   Project,
   listKbs,
+  listDocuments,
   createKb,
   KnowledgeBase,
   ingestDocument,
@@ -27,6 +28,7 @@ export default function Knowledge() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   // 已发起轮询的 document_id 集合
   const pollingRef = useRef<Set<string>>(new Set());
@@ -57,10 +59,33 @@ export default function Knowledge() {
   useEffect(() => {
     if (!kbId) {
       setDocs([]);
+      setLoadingDocs(false);
       return;
     }
-    // 文档列表接口在契约中未单列；此处以空数组起步，依靠上传后追加
-    setDocs([]);
+    let cancelled = false;
+    setLoadingDocs(true);
+    setError(null);
+    listDocuments(kbId)
+      .then((ds) => {
+        if (cancelled) return;
+        setDocs(ds);
+        // 切换知识库后，继续轮询此前尚未终态（pending/parsing）的文档，保证状态最终收敛
+        ds.filter((d) => d.status === 'pending' || d.status === 'parsing').forEach((d) => {
+          if (!pollingRef.current.has(d.id)) {
+            pollingRef.current.add(d.id);
+            pollStatus(kbId, d);
+          }
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setDocs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDocs(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [kbId]);
 
   async function onAddKb(e: FormEvent) {
@@ -196,7 +221,10 @@ export default function Knowledge() {
               <tr><th>标题</th><th>状态</th><th>切片数</th></tr>
             </thead>
             <tbody>
-              {docs.length === 0 && (
+              {docs.length === 0 && loadingDocs && (
+                <tr><td colSpan={3} className="muted">加载中…</td></tr>
+              )}
+              {docs.length === 0 && !loadingDocs && (
                 <tr><td colSpan={3} className="muted">尚未上传文档</td></tr>
               )}
               {docs.map((d) => (
