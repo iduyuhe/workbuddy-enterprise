@@ -23,7 +23,8 @@ poc-references/
 ├── SCHEMA.md                 # manifest / skill / mcp / agent 剧本 schema 权威规范
 ├── common.py                 # 加载 / 校验 / 发布共享逻辑（供 validate / provision 复用）
 ├── validate_poc.py           # 校验全部 POC：YAML 解析 + 引用完整性
-├── provision.py              # 把指定 POC 铺进租户（--dry-run 仅打印计划；--apply 真实调用网关）
+├── provision.py              # 把指定 POC 铺进租户（--dry-run 仅打印；--apply 真实调用；--rollback 回滚）
+├── PILOT_DELIVERY.md         # 试点客户交付手册（环境前置 / 一键铺包 / 验收 / 回滚 / 排错）
 ├── manufacturing/            # 制造业骨架
 │   ├── manifest.yaml         # 市场包 + scenario + resources（provision 的输入）
 │   ├── README.md             # 行业 POC 说明（给售前/交付看）
@@ -58,7 +59,13 @@ python src/deploy/poc-references/provision.py --poc manufacturing --dry-run
 python src/deploy/poc-references/provision.py --poc manufacturing \
     --gateway-url http://localhost:8000 \
     --token $WB_TOKEN --tenant-id $WB_TENANT
+
+# 4) 撤场/重铺：凭铺包生成的 .state.json 反向删除（详见 PILOT_DELIVERY.md）
+python src/deploy/poc-references/provision.py --poc manufacturing --rollback \
+    --state-file manufacturing.state.json --token $WB_TOKEN --tenant-id $WB_TENANT
 ```
+
+> **交付工程师请看 [`PILOT_DELIVERY.md`](./PILOT_DELIVERY.md)**：环境前置清单、一键铺包命令、验收步骤（对接 `acceptance.md` 的 success_metrics）、回滚流程与常见排错。
 
 ---
 

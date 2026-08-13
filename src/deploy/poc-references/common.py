@@ -66,18 +66,20 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
         steps.append({
             "kind": "knowledge_base",
             "logical_id": kb_id,
-            "endpoint": "/api/kb",
+            "endpoint": "/api/kb/kb",
             "method": "POST",
-            "payload": {"name": kb["name"], "logical_id": kb_id},
+            "payload": {"name": kb["name"]},
             "note": f"创建知识库「{kb['name']}」（逻辑 id={kb_id}）",
         })
         for doc in _iter_seed_docs(seed_abs):
             steps.append({
                 "kind": "kb_document",
                 "logical_id": kb_id,
-                "endpoint": f"/api/kb/{{{kb_id}}}/documents",
+                "endpoint": f"/api/kb/kb/{{{kb_id}}}/ingest",
                 "method": "POST",
-                "payload": {"file": os.path.basename(doc), "logical_kb_id": kb_id},
+                "_file_path": doc,  # 真实文件绝对路径，apply 时按 multipart 上传
+                "file_field": "file",
+                "payload": {},
                 "note": f"灌入种子文档 {os.path.basename(doc)} → 知识库 {kb_id}",
             })
 
@@ -87,7 +89,7 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
         steps.append({
             "kind": "skill",
             "logical_id": sk["id"],
-            "endpoint": "/api/skills",
+            "endpoint": "/api/skills/skills",
             "method": "POST",
             "payload": {
                 "slug": sk["slug"],
@@ -113,7 +115,6 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
                 "transport": spec.get("transport", "sse"),
                 "endpoint": spec.get("endpoint"),
                 "secret_ref": spec.get("secret_ref"),
-                "logical_id": mc["id"],
             },
             "note": f"注册 MCP 连接器「{spec.get('name')}」（逻辑 id={mc['id']}）",
         })
@@ -135,10 +136,9 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
         steps.append({
             "kind": "agent_playbook",
             "logical_id": ag["id"],
-            "endpoint": "/api/v1/agent/playbooks",
+            "endpoint": "/api/agent/playbooks",
             "method": "POST",
             "payload": {
-                "id": ag["id"],
                 "name": agent.get("name"),
                 "model": agent.get("model"),
                 "system_prompt": agent.get("system_prompt"),

@@ -9,10 +9,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from fastapi import FastAPI
 
 from app.api import agent
+from app.api import playbook
 from app.core.db import init_db
 
 app = FastAPI(title="WorkBuddy Enterprise agent-runtime", version="1.0.0")
 app.include_router(agent.router)
+app.include_router(playbook.router)
 
 
 @app.on_event("startup")

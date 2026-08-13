@@ -26,6 +26,7 @@ def get_db():
 
 def init_db():
     import app.models.run  # noqa: F401  ensure tables registered
+    import app.models.playbook  # noqa: F401  ensure AgentPlaybook registered
 
     # 优先用 alembic 迁移（生产 schema 演进）；无 alembic / 迁移失败则回退 create_all（dev/sqlite）
     try:

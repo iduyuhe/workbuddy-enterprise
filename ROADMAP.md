@@ -38,6 +38,15 @@ WorkBuddy Enterprise Edition 采用「先跑通最小闭环、再阶梯式增强
 - [x] **标杆 POC**：制造业 / 金融业样板客户，沉淀行业 Killer Scenario（两套可直接铺进租户的参考骨架：`src/deploy/poc-references/` 下的 manufacturing / finance，含市场包清单 + 技能 + 知识库种子 + MCP 连接器 + 智能体剧本 + 验收标准；`validate_poc.py` 校验 0 error、`provision.py` 干跑通过。详见 VERIFICATION_REPORT 第 23 节）
 - [x] **社区运营**：文档站点、示例库、贡献者激励（mkdocs 站点 + `examples/` 三示例 + `GOVERNANCE.md` 激励体系；`verify_site.py` 校验 0 error。详见 VERIFICATION_REPORT 第 24 节）
 
+## 🔜 阶段 5 · 商业化与试点交付
+
+- [x] **试点交付包（Pilot Delivery）**：把标杆 POC 从「骨架」升级为「可交付资产」。
+  - **补平台缺的剧本端点**：agent-service 新增 `agent_playbooks` 资源（模型 + `0004_playbook` 迁移 + Pydantic schema + REST 路由 `POST/GET/PATCH/DELETE /agent/playbooks` + `tenant_id` 多租户隔离），对齐网关 `/api/agent` 与 `provision.py` 铺包目标。
+  - **校准铺包契约**：`provision.py` / `common.py` 端点与载荷对齐平台真实路由——KB 创建 `/api/kb/kb`、文档灌入 `/api/kb/kb/{id}/ingest`（multipart）、技能 `/api/skills/skills`、剧本 `/api/agent/playbooks`；apply 时注入租户/项目隔离键，并对剧本 `defaults` 做嵌套 logical_id→real_id 递归替换。
+  - **回滚能力**：`provision.py --rollback` 按 state 文件反向删除（剧本→MCP→技能→知识库），支持 `--dry-run` 演练。
+  - **交付手册**：`src/deploy/poc-references/PILOT_DELIVERY.md`（环境前置 / 一键铺包 / 验收 / 回滚 / 排错）。
+  - **校验**：`validate_poc.py` 两套 0 error；`provision.py --dry-run` 端点/载荷正确；回滚 dry-run 反向顺序正确；agent-service 新文件语法编译通过、迁移模块导入无误。`0004_playbook` 与既有 `0001_initial` 同样使用 PostgreSQL JSONB（SQLite 无法渲染 JSONB，故 alembic 仅支持 PG——属项目级既有约束，非本次引入）。详见 VERIFICATION_REPORT 第 25 节。
+
 ## 不确定性
 
 - GPU 推理资源到位时间影响「真实对话 Demo」交付
