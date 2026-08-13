@@ -1,0 +1,250 @@
+# =============================================================================
+# WorkBuddy Enterprise Edition —— Helm values
+# 千企规模生产编排：7 微服务 + 网关 + 模型网关 + 依赖存储（PG/Redis/Qdrant）
+# 端口规划（与 docker-compose / 服务代码一致）：
+#   gateway 8000 · model-gateway 8001 · auth 8002 · skills 8003 · mcp 8004
+#   kb 8005 · audit 8006 · agent 8007
+# =============================================================================
+
+global:
+  # 镜像仓库前缀，留空则用各服务 image.repository 原值
+  imageRegistry: ""
+  imagePullSecrets: []
+  # 未指定时由集群默认 StorageClass 提供
+  storageClass: ""
+  # 对外域名（Ingress）
+  domain: workbuddy.example.com
+  # 集群 ingress 类名，按环境调整（nginx / alb / traefik 等）
+  ingressClassName: nginx
+  # 环境标识，用于资源/标签区分
+  environment: production
+
+# 默认镜像（各服务可覆盖）
+image:
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# -----------------------------------------------------------------------------
+# 依赖存储
+# 生产建议：postgresql/redis/qdrant.enabled=false，使用外部托管实例（云 RDS / Redis / 向量库）
+# 起步 / 小规模：enabled=true 在集群内部署单实例（非 HA，仅供验证）
+# -----------------------------------------------------------------------------
+postgresql:
+  enabled: false
+  host: wb-postgres
+  port: 5432
+  user: wbadmin
+  database: workbuddy
+  # 使用已有 Secret（key: postgres-password）而非创建；空则按 secrets.postgresPassword 创建
+  existingSecret: ""
+  storage:
+    size: 20Gi
+
+redis:
+  enabled: false
+  host: wb-redis
+  port: 6379
+  password: ""
+  storage:
+    size: 4Gi
+
+qdrant:
+  enabled: false
+  # 外部 Qdrant 地址（enabled=false 时使用）
+  url: http://wb-qdrant:6333
+  storage:
+    size: 20Gi
+
+# -----------------------------------------------------------------------------
+# 密钥（仅用于演示 / 起步；生产请用 Sealed Secrets / External Secrets / Vault）
+# -----------------------------------------------------------------------------
+secrets:
+  jwtSecret: "change-me-jwt-secret"
+  postgresPassword: "wbsecret"
+  redisPassword: ""
+  oidcClientSecret: ""
+  # 模型网关外部 LLM BYOK Key（可选）
+  llmApiKey: ""
+
+# -----------------------------------------------------------------------------
+# 微服务清单
+# 每个服务支持：enabled / port / replicas / image / resources / autoscaling / env / canary
+# -----------------------------------------------------------------------------
+services:
+
+  gateway:
+    enabled: true
+    port: 8000
+    replicas: 2
+    image:
+      repository: workbuddy/gateway
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+    # 灰度发布（用户侧入口，走 Ingress 流量权重）
+    canary:
+      enabled: false
+      weight: 10          # 灰度流量百分比 0-100
+      image:
+        tag: "canary"     # 灰度镜像 tag
+
+  model-gateway:
+    enabled: true
+    port: 8001
+    replicas: 2
+    image:
+      repository: workbuddy/model-gateway
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+
+  auth-service:
+    enabled: true
+    port: 8002
+    replicas: 2
+    image:
+      repository: workbuddy/auth-service
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+
+  skills-registry:
+    enabled: true
+    port: 8003
+    replicas: 2
+    image:
+      repository: workbuddy/skills-registry
+    resources:
+      requests:
+        cpu: 150m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+
+  mcp-connector:
+    enabled: true
+    port: 8004
+    replicas: 2
+    image:
+      repository: workbuddy/mcp-connector
+    resources:
+      requests:
+        cpu: 150m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+
+  knowledge-service:
+    enabled: true
+    port: 8005
+    replicas: 2
+    image:
+      repository: workbuddy/knowledge-service
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+
+  audit-service:
+    enabled: true
+    port: 8006
+    replicas: 2
+    image:
+      repository: workbuddy/audit-service
+    resources:
+      requests:
+        cpu: 150m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+
+  agent-service:
+    enabled: true
+    port: 8007
+    replicas: 2
+    image:
+      repository: workbuddy/agent-service
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 12
+      targetCPUUtilizationPercentage: 75
+
+# -----------------------------------------------------------------------------
+# 前端控制台（可选独立部署；也可走 CI/CD 静态托管）
+# -----------------------------------------------------------------------------
+web:
+  enabled: false
+  image:
+    repository: workbuddy/web
+    tag: "latest"
+  port: 80
+  replicas: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

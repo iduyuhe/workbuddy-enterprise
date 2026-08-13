@@ -1,0 +1,38 @@
+WorkBuddy Enterprise Edition 已部署至命名空间 {{ .Release.Namespace }}（release: {{ .Release.Name }}）。
+
+== 已启用的服务 ==
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  - {{ $name }}  (端口 {{ $svc.port }}, 副本 {{ $svc.replicas }}{{ if $svc.autoscaling.enabled }}, HPA {{ $svc.autoscaling.minReplicas }}-{{ $svc.autoscaling.maxReplicas }}{{ end }}{{ if and $svc.canary $svc.canary.enabled }}, 灰度 {{ $svc.canary.weight }}%{{ end }})
+{{- end }}
+{{- end }}
+
+== 访问入口 ==
+{{- if index .Values.services "gateway" "enabled" }}
+  Ingress:  https://{{ .Values.global.domain }}  （ingressClass: {{ .Values.global.ingressClassName }}）
+{{- else }}
+  未启用 gateway Ingress，请通过各 Service ClusterIP 内部访问。
+{{- end }}
+
+== 依赖存储 ==
+{{- if .Values.postgresql.enabled }}
+  PostgreSQL : 集群内部署（{{ .Release.Name }}-postgresql:5432）—— 仅供验证，生产请用托管 RDS。
+{{- else }}
+  PostgreSQL : 外部（{{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}）
+{{- end }}
+{{- if .Values.redis.enabled }}
+  Redis      : 集群内部署（{{ .Release.Name }}-redis:6379）
+{{- else }}
+  Redis      : 外部（{{ .Values.redis.host }}:{{ .Values.redis.port }}）
+{{- end }}
+{{- if .Values.qdrant.enabled }}
+  Qdrant     : 集群内部署（{{ .Release.Name }}-qdrant:6333）
+{{- else }}
+  Qdrant     : 外部（{{ .Values.qdrant.url }}）
+{{- end }}
+
+== 运维提示 ==
+  - 查看 HPA：      kubectl get hpa -l app.kubernetes.io/instance={{ .Release.Name }}
+  - 灰度发布：      置 services.gateway.canary.enabled=true 并重设 canary.image.tag，按权重切流
+  - 密钥：          默认由 Secret {{ .Release.Name }}-secrets 提供；生产请改用 Sealed Secrets / External Secrets / Vault
+  - 扩缩容：        kubectl scale deploy {{ .Release.Name }}-agent-service --replicas=20

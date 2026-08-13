@@ -1,0 +1,1 @@
+{{/* canary 资源已拆分为: canary-deployment.yaml / canary-service.yaml / canary-ingress.yaml */}}

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: workbuddy-enterprise
+description: WorkBuddy Enterprise Edition —— 千企规模 K8s 生产编排（7 微服务 + 网关 + 模型网关 + 依赖存储）
+type: application
+version: 0.4.0
+appVersion: "0.4.0"
+keywords:
+  - workbuddy
+  - enterprise
+  - llm
+  - agent
+  - rag
+home: https://github.com/iduyuhe/workbuddy-enterprise
+sources:
+  - https://github.com/iduyuhe/workbuddy-enterprise
+maintainers:
+  - name: WorkBuddy Team

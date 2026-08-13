@@ -1,0 +1,23 @@
+{{- range $name, $svc := .Values.services }}
+{{- if and $svc.enabled (and $svc.canary $svc.canary.enabled) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}-canary
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/canary: "true"
+    {{- include "wb.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/canary: "true"
+    {{- include "wb.selectorLabels" $ | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+{{- end }}
+{{- end }}
