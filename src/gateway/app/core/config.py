@@ -15,6 +15,7 @@ SKILLS_SERVICE_URL = _env("SKILLS_SERVICE_URL", "http://localhost:8003")
 MCP_SERVICE_URL = _env("MCP_SERVICE_URL", "http://localhost:8004")
 AUDIT_SERVICE_URL = _env("AUDIT_SERVICE_URL", "http://localhost:8006")
 AGENT_SERVICE_URL = _env("AGENT_SERVICE_URL", "http://localhost:8007")
+MARKETPLACE_SERVICE_URL = _env("MARKETPLACE_SERVICE_URL", "http://localhost:8008")
 AGENT_CHAT_ENABLED = _env("AGENT_CHAT_ENABLED", "false").lower() in ("1", "true", "yes", "on")
 
 JWT_SECRET = _env("JWT_SECRET", "dev-secret-change-me")

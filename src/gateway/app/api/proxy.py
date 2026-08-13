@@ -9,6 +9,7 @@ from app.core.config import (
     AUDIT_SERVICE_URL,
     AUTH_SERVICE_URL,
     KB_SERVICE_URL,
+    MARKETPLACE_SERVICE_URL,
     MCP_SERVICE_URL,
     MODEL_GATEWAY_URL,
     SKILLS_SERVICE_URL,
@@ -30,6 +31,7 @@ SERVICE_BY_PREFIX = {
     "/api/mcp": MCP_SERVICE_URL,
     "/api/audit": AUDIT_SERVICE_URL,
     "/api/agent": AGENT_SERVICE_URL,
+    "/api/marketplace": MARKETPLACE_SERVICE_URL,
 }
 
 # public (no auth / no rbac) endpoints
@@ -72,6 +74,8 @@ def derive_rbac_action(path: str, method: str) -> str | None:
         res = "audit"
     elif path.startswith("/api/agent"):
         res = "agent"
+    elif path.startswith("/api/marketplace"):
+        res = "marketplace"
     else:
         return None
 

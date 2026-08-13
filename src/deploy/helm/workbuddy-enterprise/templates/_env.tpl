@@ -71,6 +71,8 @@ accessed via index, not dot notation: index $.Values.services "auth-service" "po
   value: "http://{{ $root.Release.Name }}-audit-service:{{ index $svcs "audit-service" "port" }}"
 - name: AGENT_SERVICE_URL
   value: "http://{{ $root.Release.Name }}-agent-service:{{ index $svcs "agent-service" "port" }}"
+- name: MARKETPLACE_SERVICE_URL
+  value: "http://{{ $root.Release.Name }}-marketplace-service:{{ index $svcs "marketplace-service" "port" }}"
 {{- with $svc.env }}
 {{- toYaml . | nindent 0 }}
 {{- end }}

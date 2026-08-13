@@ -231,6 +231,25 @@ services:
       maxReplicas: 12
       targetCPUUtilizationPercentage: 75
 
+  marketplace-service:
+    enabled: true
+    port: 8008
+    replicas: 2
+    image:
+      repository: workbuddy/marketplace-service
+    resources:
+      requests:
+        cpu: 150m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+
 # -----------------------------------------------------------------------------
 # 前端控制台（可选独立部署；也可走 CI/CD 静态托管）
 # -----------------------------------------------------------------------------
