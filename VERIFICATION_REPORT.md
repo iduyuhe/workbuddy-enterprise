@@ -706,10 +706,9 @@ apply 增强：注入 `X-Tenant-Id` + `X-Project-Id=tenant`；KB/skill/mcp/playb
 | 回滚干跑 | `python provision.py --poc manufacturing --rollback --dry-run`（合成 state） | ✅ 反向 4 步 DELETE 端点正确 |
 | agent-service 新文件语法 | `python -m py_compile` 5 文件 | ✅ 全部通过 |
 | 迁移模块导入 | 直接 import 0004_playbook | ✅ revision=0004_playbook / down=0003_tenant，upgrade/downgrade callable |
-| 迁移 PG 实测 | `alembic upgrade head`（PG） | ⚠️ 待执行——本会话 Docker daemon 管道未就绪（与历史 Phase 环境限制一致）；迁移采用与已真实 PG 验证过的 marketplace 0001 **相同 JSONB variant 模式**，且既有 `0001_initial` 同样硬编码 JSONB（sqlite 全量不可渲染属项目级既有约束，非本次引入） |
+| 迁移 PG 实测 | `alembic upgrade head`（**真实 PostgreSQL 16.14**） | ✅ 执行成功（EXIT=0）；`agent_playbooks` 表已建（11 列），`defaults`/`scenario_flow` 两列真实类型为 **jsonb**（PG 方言落 JSONB，未退化为 text）；含 `pkey` + `ix_agent_playbooks_tenant_id` + `ix_agent_playbooks_project_id` 租户隔离索引 |
 
-> **2026-08-13 离线兜底校验**：`py_compile` 通过；直接 import 确认 `revision=0004_playbook` / `down_revision=0003_tenant`、upgrade/downgrade 均可调用；JSON 列采用 `sa.JSON().with_variant(sa.dialects.postgresql.JSONB(), "postgresql")`（与 marketplace 0001 同模式，PG 落 JSONB、其余方言退化为通用 JSON）。
-> 待办（仍未解除）：当前会话 Docker daemon 仍不可用、且 SQLite 无法渲染 JSONB，故真实 PG `alembic upgrade head` 建表验证仍待 Docker/PG 就绪后执行；届时按 `PILOT_DELIVERY.md` 在真实租户跑通端到端铺包。
+> **2026-08-13 真实 PG 建表验证（已闭环）**：用户反馈 Docker Desktop 无法打开，改用本机已运行的真实 PostgreSQL 16.14（监听 `127.0.0.1:5432`，与历史 e2e 同实例，非 Docker 触发）完成验证。执行 `AGENT_DATABASE_URL=postgresql+psycopg2://wbadmin:wbsecret@127.0.0.1:5432/workbuddy alembic upgrade head` → EXIT=0；连库核验 `alembic_version=0004_playbook`、`agent_playbooks` 表存在、`defaults`/`scenario_flow` 均为 **jsonb** 类型、`tenant_id`/`project_id` 索引就位。**结论：`0004_playbook` 在真实 PG 上建表成功，JSONB variant 写法正确，此前"SQLite 无法渲染 JSONB"的隐患在 PG 路径上不存在**。端到端铺包（按 `PILOT_DELIVERY.md` 在真实租户跑 `provision.py --apply`）仍建议在有网关的运行环境补做，但迁移建表这一环已确定性通过。
 
 ## 26 · 商业化支撑文档（阶段 5 · 块 B）
 
