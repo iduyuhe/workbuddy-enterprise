@@ -708,4 +708,52 @@ apply 增强：注入 `X-Tenant-Id` + `X-Project-Id=tenant`；KB/skill/mcp/playb
 | 迁移模块导入 | 直接 import 0004_playbook | ✅ revision=0004_playbook / down=0003_tenant，upgrade/downgrade callable |
 | 迁移 PG 实测 | `alembic upgrade head`（PG） | ⚠️ 待执行——本会话 Docker daemon 管道未就绪（与历史 Phase 环境限制一致）；迁移采用与已真实 PG 验证过的 marketplace 0001 **相同 JSONB variant 模式**，且既有 `0001_initial` 同样硬编码 JSONB（sqlite 全量不可渲染属项目级既有约束，非本次引入） |
 
-> 待办：在 Docker/PG 可用环境执行 `AGENT_DATABASE_URL=<PG> alembic upgrade head` 完成 0004 真实建表验证；届时按 `PILOT_DELIVERY.md` 在真实租户跑通端到端铺包。
+> **2026-08-13 离线兜底校验**：`py_compile` 通过；直接 import 确认 `revision=0004_playbook` / `down_revision=0003_tenant`、upgrade/downgrade 均可调用；JSON 列采用 `sa.JSON().with_variant(sa.dialects.postgresql.JSONB(), "postgresql")`（与 marketplace 0001 同模式，PG 落 JSONB、其余方言退化为通用 JSON）。
+> 待办（仍未解除）：当前会话 Docker daemon 仍不可用、且 SQLite 无法渲染 JSONB，故真实 PG `alembic upgrade head` 建表验证仍待 Docker/PG 就绪后执行；届时按 `PILOT_DELIVERY.md` 在真实租户跑通端到端铺包。
+
+## 26 · 商业化支撑文档（阶段 5 · 块 B）
+
+产出面向首份付费合同与规模销售的统一商业化底稿，对齐规划报告里程碑 2026.11「POC 上线 + 首份付费合同」。
+
+### 26.1 文档内容
+`docs/commercialization.md` 含九节：
+- 价值主张与三道护城河（消费级体验 / 行业场景深度 / 企业级治理底座）
+- 目标客群分层（L1 标杆大客户 → L4 生态伙伴）与早期切入策略
+- 四档定价与授权模型：本地化旗舰版 **¥80-150 万/年**（含 50 席）、行业定制版 **¥50-100 万/年**、SaaS 订阅版 **¥800-3000/席/月**、生态版项目分成；计费维度（席位/租户/节点/场景/GPU）与授权组合（永久+年维保 / 纯订阅 / POC 抵扣）
+- 竞品定位（OpenAI / 字节 Coze / 阿里百炼 / 百度千帆 / 腾讯字节）与差异化
+- ROI 保守测算（18 月约 ¥1850 万，3 年 ¥5000 万-1 亿）
+- 销售赋能包（demo 话术 / FAQ / 投标材料清单 / POC 交付包 / 架构契约 / 运维就绪 / 合规就绪）
+- 投标与采购应答材料清单
+- 销售侧风险与应对
+- 商业化下一步行动
+
+### 26.2 结果
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 文档落地 | `ls docs/commercialization.md` | ✅ 已创建 |
+| nav 注册 | `mkdocs.yml` 新增「商业化与交付 › 商业化支撑」 | ✅ |
+| 站点校验 | `python docs/verify_site.py` | ✅ 0 错误 / 0 警告（15 页） |
+
+> 注：本文定价/测算为对外报价框架与保守口径，源自规划报告 2.5 / 4.x，非合同承诺值。
+
+## 27 · 生产化闭环文档（阶段 5 · 块 C）
+
+把 MVP 升级为生产环境可长期稳定运行的闭环，衔接 RUNBOOK / K8S_DEPLOY / SECURITY / 阶段 3 合规（等保三级 / 密评）。
+
+### 27.1 文档内容
+`docs/production-readiness.md` 含八节：
+- 生产就绪清单（Go-Live Checklist：基础设施 / 安全合规 / 数据层 / 可观测容灾 四类共 4×红项卡点）
+- 可观测性（Prometheus+Grafana+Langfuse；关键指标与内部 SLO 基线：可用性 ≥99.5%、P99 ≤2s）
+- 备份与容灾（PG/Qdrant/Redis 备份方式与 RPO/RTO，强制季度恢复演练，多租户隔离恢复）
+- SLA 与值守（三档可用性目标 + 事件 P1-P3 分级 + 7×24 On-call 升级路径）
+- 升级与补丁（Helm 灰度 10%→50%→100% + alembic 迁移先行 + 回滚；迁移安全铁律：禁止无回滚路径 DDL）
+- 客户支持模型（L1/L2/L3 + 知识沉淀反哺 + 客户成功季度复盘）
+- 安全运营常态化（等保三级 / 密评 SM2-3-4 / 内容审核 / 审计 转入日常，新增端点默认继承租户隔离与审计）
+- 生产化闭环校验证据清单（闭环标志：不依赖原厂驻场即可稳定/可观测/可恢复/可升级/可支持）
+
+### 27.2 结果
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 文档落地 | `ls docs/production-readiness.md` | ✅ 已创建 |
+| nav 注册 | `mkdocs.yml` 新增「商业化与交付 › 生产化闭环」 | ✅ |
+| 站点校验 | `python docs/verify_site.py` | ✅ 0 错误 / 0 警告（15 页） |

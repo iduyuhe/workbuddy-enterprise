@@ -42,6 +42,9 @@ nav:
       - hello-skill 最小技能: examples/hello-skill.md
       - marketplace 最小包: examples/marketplace-package.md
       - agent 剧本示例: examples/agent-playbook.md
+  - 商业化与交付:
+      - 商业化支撑: commercialization.md
+      - 生产化闭环: production-readiness.md
   - 社区:
       - 贡献指南: community/contributing.md
       - 治理与贡献者激励: community/governance.md
