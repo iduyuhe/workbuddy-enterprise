@@ -94,7 +94,10 @@ cd src/deploy && docker compose up -d
 
 ```
 workbuddy-enterprise/
-├── docs/                 # 架构设计 + 接口契约（事实来源）
+├── docs/                 # 文档站页面（架构/接口/运维/社区/示例说明）
+│   ├── community/        # 社区：贡献 / 治理 / 示例索引 / 路线图
+│   └── examples/         # 示例说明页
+├── examples/             # 真实可跑示例库（hello-skill / marketplace-package / agent-playbook）
 ├── src/
 │   ├── gateway/          # API 网关
 │   ├── auth-service/     # 认证授权 + RBAC
@@ -103,13 +106,17 @@ workbuddy-enterprise/
 │   ├── skills-registry/  # 技能注册中心
 │   ├── mcp-connector/    # MCP 连接器
 │   ├── audit-service/    # 审计服务
+│   ├── marketplace-service/ # 生态市场（技能/连接器/专家包）
 │   ├── frontend/         # React/TS 控制台
 │   ├── shared/           # 跨服务共享模型
-│   └── deploy/           # 私有化部署资产（docker-compose 等）
+│   └── deploy/           # 私有化部署资产（docker-compose / helm / poc-references）
+├── mkdocs.yml            # 文档站配置
 ├── .github/              # CI / Issue / PR 模板
 ├── LICENSE               # Apache-2.0
 ├── CHANGELOG.md          # 版本变更
 ├── CONTRIBUTING.md       # 贡献指南
+├── GOVERNANCE.md         # 治理与贡献者激励
+├── CODE_OF_CONDUCT.md    # 行为准则
 ├── SECURITY.md           # 安全披露政策
 └── ROADMAP.md            # 路线图
 ```
@@ -121,15 +128,26 @@ workbuddy-enterprise/
 - **阶段 1（已完成 · v0.1.0）**：MVP 最小闭环 —— 私有化底座 + 7 微服务 + 前端 + RAG 全链路验证。
 - **阶段 2**：生产数据层（PostgreSQL/Qdrant 正式接入）、内容审核、Agent 运行时（LangGraph 编排）、Skills/MCP 真实执行。
 - **阶段 3**：信创适配（鲲鹏/海光/麒麟/达梦）、等保三级、多租户。
-- **阶段 4**：规模交付（千企）、生态市场（技能/连接器交易）。
+- **阶段 4（收尾中）**：规模交付（千企 K8s+Helm）、生态市场（技能/连接器交易）、标杆 POC（制造业/金融业骨架）、社区运营（本文档站 + 示例库 + 贡献者激励）。
+
+## 📚 文档站与示例库
+
+- **文档站**：本仓库即一个 MkDocs 站点（`mkdocs.yml` + `docs/`）。本地预览：
+  ```bash
+  pip install mkdocs mkdocs-material && mkdocs serve   # http://127.0.0.1:8000
+  ```
+  含架构、接口契约、运维手册、示例说明与社区治理页面。
+- **示例库** [`examples/`](./examples)：三个真实可跑示例 —— `hello-skill`（最小技能）、`marketplace-package`（最小市场包）、`agent-playbook`（智能体剧本），均对齐平台契约。
+- **行业标杆 POC** [`src/deploy/poc-references/`](./src/deploy/poc-references)：制造业 / 金融业两套可直接铺进租户的行业解决方案包骨架。
+
+## 🤝 社区与贡献者激励
+
+欢迎 Issue、PR 与讨论。开始前请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 与 [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)。
+贡献者分级（Contributor → Member → Maintainer → Emeritus）、任务认领机制与激励体系（署名墙 / 路线图投票 / 年度榜单 / 共建邀约）见 [`GOVERNANCE.md`](./GOVERNANCE.md)。
 
 ## 🔐 安全
 
 本平台面向信息安全敏感行业，安全是核心诉求。请阅读 [`SECURITY.md`](./SECURITY.md) 了解漏洞披露流程，以及企业部署的安全基线建议。
-
-## 🤝 贡献
-
-欢迎 Issue、PR 与讨论。开始前请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 与 [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)。
 
 ## 📄 许可证
 

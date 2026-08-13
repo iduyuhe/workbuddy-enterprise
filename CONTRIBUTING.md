@@ -50,6 +50,20 @@
 - 前端：`npm run build` 必须通过
 - 提交前请在本地跑通最小闭环（登录 → 建库 → 检索）
 
+## 认领任务（推荐新贡献者路径）
+
+不想从零构思？直接认领社区已标记的任务：
+
+1. 在 Issues 筛选标签：`good first issue`（文档 / 示例 / 单测等小任务）、`help wanted`（中等任务）、`docs` / `examples`（文档与示例库）。
+2. 在 Issue 下留言 **"I'd like to take this"**，Maintainer 会在 48 小时内确认并把你加为 Assignee。
+3. 开分支、提交、提 PR，关联该 Issue。
+
+> 示例库 `examples/` 与文档站 `docs/` 大量使用 `good first issue`，是熟悉代码库的最低门槛入口。
+
+## 贡献者激励
+
+合并首个 PR 即进入 `CONTRIBUTORS`；持续贡献可晋升 Member / Maintainer，获得路线图投票权、贡献者墙展示、年度榜单与共建邀约。分级标准与激励体系见 [`GOVERNANCE.md`](./GOVERNANCE.md) 与文档站 [`治理与贡献者激励`](./docs/community/governance.md)。
+
 ## Issue 与 PR
 
 - Bug 请使用 **Bug Report** 模板，附复现步骤与环境信息。

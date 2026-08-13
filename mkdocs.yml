@@ -1,0 +1,64 @@
+site_name: WorkBuddy Enterprise Edition 文档站
+site_description: 面向大型企业 / 国企 / 央企 / 金融机构的私有化 AI 智能体平台 —— 文档、示例库与社区。
+site_author: WorkBuddy Enterprise 开发团队
+site_url: https://iduyuhe.github.io/workbuddy-enterprise/
+repo_name: iduyuhe/workbuddy-enterprise
+repo_url: https://github.com/iduyuhe/workbuddy-enterprise
+edit_uri: edit/main/
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换深色
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: 切换浅色
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+
+nav:
+  - 首页: overview.md
+  - 快速开始: getting-started.md
+  - 架构与设计:
+      - 系统架构: ARCHITECTURE.md
+      - 接口契约: API_CONTRACT.md
+      - 运维手册: RUNBOOK.md
+  - 示例库:
+      - 示例总览: community/examples.md
+      - hello-skill 最小技能: examples/hello-skill.md
+      - marketplace 最小包: examples/marketplace-package.md
+      - agent 剧本示例: examples/agent-playbook.md
+  - 社区:
+      - 贡献指南: community/contributing.md
+      - 治理与贡献者激励: community/governance.md
+      - 行为准则: community/code-of-conduct.md
+      - 路线图: community/roadmap.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/iduyuhe/workbuddy-enterprise

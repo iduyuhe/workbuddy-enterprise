@@ -1,0 +1,9 @@
+name: crm-connector
+transport: http
+endpoint: https://crm.internal.example.com/mcp
+secret_ref: crm_api_key
+tools:
+  - name: get_customer
+    description: 按客户 ID 查询客户档案（名称、等级、联系人）。
+  - name: list_tickets
+    description: 列出指定客户的工单与状态。

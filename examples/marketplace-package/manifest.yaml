@@ -1,0 +1,16 @@
+slug: hello-package
+name: Hello 示例包
+package_type: skill
+publisher: workbuddy-ent-dev
+version: 1.0.0
+summary: 一个最小可上架示例包，含打招呼技能。
+description: 演示生态市场包的最小结构，用于快速验证上架流程。
+tags: [demo, starter]
+categories: [示例]
+license: Apache-2.0
+price_model: free
+visibility: public
+resources:
+  skills:
+    - slug: hello
+      storage_path: skills/hello

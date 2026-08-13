@@ -1,0 +1,26 @@
+slug: hello-agent
+name: Hello 助手剧本
+package_type: expert
+publisher: workbuddy-ent-dev
+version: 1.0.0
+summary: 最小智能体剧本示例，演示 ReAct 三件套编排。
+description: 把企业 FAQ 知识库、打招呼技能与 CRM MCP 工具编排为一个最小智能体，用于验证 agent-service 剧本格式。
+tags: [demo, starter, agent]
+categories: [示例]
+license: Apache-2.0
+price_model: free
+visibility: public
+resources:
+  knowledge_bases:
+    - logical_id: kb_faq
+      name: 企业 FAQ
+  skills:
+    - logical_id: skill_hello
+      slug: hello
+      storage_path: ../hello-skill
+  mcp_servers:
+    - logical_id: mcp_crm
+      spec: mcp/crm.yaml
+  agents:
+    - logical_id: agent_hello
+      playbook: agent/playbook.yaml

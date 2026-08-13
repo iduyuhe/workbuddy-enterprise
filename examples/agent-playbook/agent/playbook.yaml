@@ -1,0 +1,21 @@
+agent:
+  name: Hello 助手
+  description: 用企业 FAQ + 打招呼技能 + CRM 工具回答用户。
+  defaults:
+    kb_id: kb_faq
+    skill_id: skill_hello
+    mcp_server_id: mcp_crm
+  scenario_flow:
+    - step: 1
+      intent: 寒暄
+      action: use_skill
+      target: skill_hello
+    - step: 2
+      intent: 查客户信息
+      action: call_mcp_tool
+      target: mcp_crm
+      tool: get_customer
+    - step: 3
+      intent: 答 FAQ
+      action: search_kb
+      target: kb_faq
