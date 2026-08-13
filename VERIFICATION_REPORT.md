@@ -756,3 +756,27 @@ apply 增强：注入 `X-Tenant-Id` + `X-Project-Id=tenant`；KB/skill/mcp/playb
 | 文档落地 | `ls docs/production-readiness.md` | ✅ 已创建 |
 | nav 注册 | `mkdocs.yml` 新增「商业化与交付 › 生产化闭环」 | ✅ |
 | 站点校验 | `python docs/verify_site.py` | ✅ 0 错误 / 0 警告（15 页） |
+
+## 28 · 端到端铺包实测（阶段 5 · 试点交付包补测）
+
+历史 e2e 受 Docker 缺失限制仅做 `--dry-run` 与离线校验；本次在「Docker Desktop 打不开」环境下，用本机已运行的真实 PostgreSQL 16.14（127.0.0.1:5432，与 §25.5 同实例）配合一个**契约一致的轻量网关**（`src/deploy/poc-references/e2e_mock_gateway.py`，真实监听 8000）完成 `provision.py` 真实 HTTP 层端到端验证。
+
+**边界说明**：mock 网关不是完整平台服务栈（真实铺包仍需 Docker/k8s 起全套微服务 + Qdrant/Redis 等依赖）；它实现 `provision.py` 实际请求的 5 类端点（KB 创建/灌入、技能、MCP 创建/同步、剧本）及对应 DELETE，其中**剧本端点真实读写已验证的 `agent_playbooks` 表**，KB/技能/MCP 用内存集合模拟。验证的是 `provision.py` 脚本自身的端点构造、租户隔离注入、`logical_id→real_id` 映射、嵌套 `defaults` 替换、state 落盘、反向回滚全链路在真实网络层跑通。
+
+**实测过程与结果（manufacturing POC，tenant=demo_tenant）**：
+
+| 环节 | 命令 / 动作 | 结果 |
+|---|---|---|
+| 铺包（apply） | `python provision.py --apply --poc manufacturing --gateway-url http://localhost:8000 --token <test> --tenant-id demo_tenant` | ✅ 10 步全部 OK（KB 创建1 + 文档灌入3 + 技能3 + MCP创建1 + MCP同步1 + 剧本1），0 失败 |
+| 逻辑 id 替换 | 请求 URL 与剧本 `defaults` 中的 `kb_id/skill_id/mcp_server_id` 均变为真实 id（如 `kb_f4ab7770c57a`） | ✅ 递归替换生效 |
+| 租户注入 | 所有请求 `X-Tenant-Id=demo_tenant`；剧本 payload 注入 `tenant_id`+`project_id` | ✅ |
+| state 落盘 | `.provision_state.json` 记录 6 个资源（kind = knowledge_base / skill×3 / mcp_server / agent_playbook） | ✅ kind 正确，无 `kb_document`/`mcp_sync` 误记 |
+| PG 真写 | `agent_playbooks` 新增 `demo_tenant` 记录，JSONB 列 `defaults` 存真实 id、`scenario_flow` 解析为 list | ✅ 0004 表在铺包链路真实使用 |
+| 回滚（rollback） | `python provision.py --rollback --poc manufacturing --state-file .provision_state.json --token <test> --tenant-id demo_tenant` | ✅ 6/6 OK（204），顺序 剧本→MCP→技能→知识库 |
+| PG 真删 | 回滚后 `select count(*) from agent_playbooks where tenant=demo_tenant` | ✅ 0（真实删除） |
+
+**实测中修复的真实 bug**：
+1. `provision.py` `_apply` 写 state 时 `resources` 推导的元素表达式引用了生成器作用域外的 `s`（Python 3.13 会 NameError），且 KB「创建」与「文档灌入」步骤共用 logical_id 会把 kind 错配成 `kb_document`（不在 `DELETE_ENDPOINTS`，导致回滚漏删 KB）。已改为 `kind_by_lid` 预映射，仅记录可独立删除的资源类型。
+2. mock 网关的 4 个 DELETE 端点误用 `JSONResponse(status_code=204)`（当前 starlette 版本 `content` 必填），导致全部 500；改为 `Response(status_code=204)`。
+
+**结论**：`provision.py` 端到端铺包/回滚逻辑在真实 HTTP 层确定性通过；`0004_playbook` 迁移的 `agent_playbooks` 表在铺包链路中被真实读写与删除；脚本两处真实 bug 已修复。剩余「对真实平台实例（全套微服务）铺包」仍依赖 Docker/k8s 起运行环境，可作为后续独立验证项。

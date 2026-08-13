@@ -137,11 +137,17 @@ def _apply(poc: str, plan: list[dict], gateway: str, token: str, tenant: str, st
                 for f in files.values():
                     f[1].close()
 
-    # 落盘映射，供 rollback 使用（保留 kind 以便反向删除）
+    # 落盘映射，供 rollback 使用（仅记录可独立删除的资源类型，避免
+    # KB 创建步骤与文档灌入步骤共用 logical_id 导致 kind 错配/漏回滚）
+    kind_by_lid = {
+        s["logical_id"]: s["kind"]
+        for s in plan
+        if s.get("kind") in DELETE_ENDPOINTS
+    }
     resources = [
-        {"kind": s["kind"], "logical_id": lid, "real_id": rid}
+        {"kind": kind_by_lid[lid], "logical_id": lid, "real_id": rid}
         for lid, rid in id_map.items()
-        if lid in {s.get("logical_id") for s in plan}
+        if lid in kind_by_lid
     ]
     id_map_out = {r["logical_id"]: r["real_id"] for r in resources}
     state = {
