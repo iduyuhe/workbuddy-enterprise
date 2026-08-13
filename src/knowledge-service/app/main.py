@@ -1,4 +1,9 @@
 """knowledge-service — 企业知识库 RAG：MinerU→bge-m3→Qdrant，检索+重排。"""
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

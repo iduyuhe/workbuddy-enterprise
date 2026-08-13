@@ -39,8 +39,8 @@ STATE_VERSION = 1
 DELETE_ENDPOINTS = {
     "agent_playbook": "/api/agent/playbooks/{id}",
     "mcp_server": "/api/mcp/servers/{id}",
-    "skill": "/api/skills/skills/{id}",
-    "knowledge_base": "/api/kb/kb/{id}",
+    "skill": "/api/skills/{id}",
+    "knowledge_base": "/api/kb/{id}",
 }
 
 
@@ -114,7 +114,7 @@ def _apply(poc: str, plan: list[dict], gateway: str, token: str, tenant: str, st
         try:
             r = httpx.request(
                 s["method"], url, json=json_body, data=data, files=files,
-                headers=headers, timeout=60,
+                headers=headers, timeout=60, trust_env=False,
             )
             if r.status_code < 300:
                 ok += 1
@@ -193,7 +193,7 @@ def _rollback(state_file: str, gateway: str, token: str, tenant: str, dry_run: b
             ok += 1
             continue
         try:
-            r = httpx.request("DELETE", url, headers=headers, timeout=30)
+            r = httpx.request("DELETE", url, headers=headers, timeout=30, trust_env=False)
             if r.status_code < 300:
                 ok += 1
                 print(f"OK   DELETE {url} → {r.status_code}")

@@ -66,7 +66,7 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
         steps.append({
             "kind": "knowledge_base",
             "logical_id": kb_id,
-            "endpoint": "/api/kb/kb",
+            "endpoint": "/api/kb",
             "method": "POST",
             "payload": {"name": kb["name"]},
             "note": f"创建知识库「{kb['name']}」（逻辑 id={kb_id}）",
@@ -75,7 +75,7 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
             steps.append({
                 "kind": "kb_document",
                 "logical_id": kb_id,
-                "endpoint": f"/api/kb/kb/{{{kb_id}}}/ingest",
+                "endpoint": f"/api/kb/{{{kb_id}}}/ingest",
                 "method": "POST",
                 "_file_path": doc,  # 真实文件绝对路径，apply 时按 multipart 上传
                 "file_field": "file",
@@ -89,7 +89,7 @@ def build_plan(manifest: dict, poc: str) -> list[dict[str, Any]]:
         steps.append({
             "kind": "skill",
             "logical_id": sk["id"],
-            "endpoint": "/api/skills/skills",
+            "endpoint": "/api/skills",
             "method": "POST",
             "payload": {
                 "slug": sk["slug"],

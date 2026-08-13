@@ -1,4 +1,9 @@
 """skills-registry — 兼容 Anthropic Skills 文件式规范的技能注册中心。"""
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

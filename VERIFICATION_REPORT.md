@@ -780,3 +780,25 @@ apply 增强：注入 `X-Tenant-Id` + `X-Project-Id=tenant`；KB/skill/mcp/playb
 2. mock 网关的 4 个 DELETE 端点误用 `JSONResponse(status_code=204)`（当前 starlette 版本 `content` 必填），导致全部 500；改为 `Response(status_code=204)`。
 
 **结论**：`provision.py` 端到端铺包/回滚逻辑在真实 HTTP 层确定性通过；`0004_playbook` 迁移的 `agent_playbooks` 表在铺包链路中被真实读写与删除；脚本两处真实 bug 已修复。剩余「对真实平台实例（全套微服务）铺包」仍依赖 Docker/k8s 起运行环境，可作为后续独立验证项。
+
+## 29 · 真实本地服务栈端到端铺包实测（另起端口，非智衍 / 非生产）
+
+按「本地另找端口起真实 enterprise-platform-plan 服务栈」的要求，在本机用 venv(`wb-ent`) 真实拉起 8 个微服务（gateway 8000 / model-gateway 8001 / auth 8002 / skills 8003 / mcp 8004 / kb 8005 / audit 8006 / agent 8007），各服务连自带 sqlite（免 alembic/Docker）；KB 走 InMemory 向量库 + FallbackEmbedder（离线可跑，无需 Qdrant/GPU）；auth 用种子 `admin/admin123`（与网关 `JWT_SECRET=dev-secret-change-me` 互通）。`provision.py` 默认 `--gateway-url http://localhost:8000` 正好命中真实网关，无需改代码。
+
+**本环境踩坑与修复（均为真实平台缺陷，已修）**：
+
+1. **`shared` 模块导入失败（skills/mcp/kb 起不来，`ModuleNotFoundError: No module named 'shared'`）**：沙箱内 `PYTHONPATH=/d/my_team/...`（Git-Bash 风格路径）对 Windows 版 Python 无效（被解析为 `C:\d\my_team\...`）。根因是 Windows 路径风格。修复：仿照 gateway `app/main.py` 既有做法，在 skills/mcp/kb 三个 `app/main.py` 顶部加 `sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))` 自注入 `src`，与网关一致。
+2. **KB 建表缺列 500（`table knowledge_bases has no column named tenant_id`）**：模型已加 `tenant_id`，但本地陈旧 sqlite 在建表前已存在，`create_all` 不会 ALTER 已有表，新列未落库。修复：删除陈旧 `knowledge.db`，重启 kb 服务由 `create_all` 重建完整 schema。
+3. **provision 端点与真实路由不符（KB / skills）**：provision 原用 `/api/kb/kb`、`/api/skills/skills`（与 mcp/agent 的双段风格一致），但真实 KB 路由是 `POST /kb`、skills 路由是 `POST /skills`。修复：`common.py` 的 `build_plan` 将 KB 创建/灌入端点改为 `/api/kb`、`/api/kb/{id}/ingest`；skills 改为 `/api/skills`；`provision.py` 的 `DELETE_ENDPOINTS` 同步改为 `/api/kb/{id}`、`/api/skills/{id}`。
+4. **skills / mcp 缺 DELETE 路由（回滚漏删）**：真实 skills/mcp 路由器此前只有创建/列表，无删除端点，回滚会 404/405。修复：新增 `DELETE /skills/{skill_id}`（ORM 级联删版本）与 `DELETE /mcp/servers/{server_id}`（级联清工具清单与凭据）。
+5. **httpx 走系统代理导致 502（环境坑，非平台 bug）**：`provision.py` 用 `httpx` 请求网关，httpx 默认 `trust_env=True` 会读取 Windows 注册表系统代理，把 `127.0.0.1` 也路由到代理（curl 不读注册表代理故正常）。修复：`httpx.request` 加 `trust_env=False`，使内部网关铺包不受环境代理干扰。
+
+**实测结果（manufacturing POC，tenant = UUID `e2e00000-0000-0000-0000-000000000013`）**：
+
+| 环节 | 结果 |
+|---|---|
+| 铺包 apply | ✅ 9/10：KB 创建 1(201) + 文档灌入 3(202) + 技能 3(201) + MCP 创建 1(201) + 剧本 1(201)；唯一失败 = MCP 同步（502 `getaddrinfo failed`，因 `mes-internal:9000` 真实 MES 不在本机栈，属外部依赖，符合预期） |
+| 回滚 rollback | ✅ 6/6：剧本→MCP→技能×3→KB 全部 200，含新增的 skills/mcp 删除路由均生效 |
+| 租户隔离 | KB/agent 以 `tenant_id` 字符串、skills/mcp 以 `project_id` UUID 隔离；网关透传 `X-Tenant-Id`，RBAC 对 admin 全放行 |
+
+**结论**：在本地自有端口真实拉起 8 微服务后，`provision.py` 对真实平台实例的端到端铺包/回滚闭环跑通（创建 9 类资源、反向删除 6 类资源）。共修复 4 处真实平台缺陷 + 1 处环境代理坑，平台契约与 `provision.py` 现已对齐。剩余唯一非阻断项：MES 连接器同步依赖真实 MES 端点（不在本验证栈内），属客户侧集成，不影响铺包骨架交付。

@@ -113,6 +113,17 @@ def get_skill(skill_id: uuid.UUID, db: Session = Depends(get_db)):
     return _to_out(skill)
 
 
+@router.delete("/skills/{skill_id}")
+def delete_skill(skill_id: uuid.UUID, db: Session = Depends(get_db)):
+    skill = db.get(Skill, skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="skill not found")
+    # ORM 级联删除版本快照（Skill.versions cascade="all, delete-orphan"）
+    db.delete(skill)
+    db.commit()
+    return {"deleted": str(skill_id)}
+
+
 @router.post("/skills/{skill_id}/invoke", response_model=SkillInvokeResponse)
 def invoke_skill(
     skill_id: uuid.UUID, payload: SkillInvokeRequest, db: Session = Depends(get_db)

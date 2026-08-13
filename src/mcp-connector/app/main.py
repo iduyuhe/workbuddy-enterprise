@@ -1,4 +1,9 @@
 """mcp-connector — MCP Server 注册 / 工具清单同步 / 工具调用中继。"""
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

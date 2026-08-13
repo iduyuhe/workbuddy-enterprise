@@ -50,7 +50,7 @@ def _check_tenant(headers) -> str | None:
 
 
 # ---- 知识库 ----
-@app.post("/api/kb/kb")
+@app.post("/api/kb")
 async def create_kb(req: Request):
     body = await req.json()
     kid = "kb_" + uuid.uuid4().hex[:12]
@@ -59,14 +59,14 @@ async def create_kb(req: Request):
     return JSONResponse({"id": kid, "name": body.get("name")}, status_code=201)
 
 
-@app.post("/api/kb/kb/{kid}/ingest")
+@app.post("/api/kb/{kid}/ingest")
 async def ingest(kid: str, file: UploadFile = File(...)):
     log("INGEST_DOC", id=kid, filename=file.filename)
     return JSONResponse({"kb_id": kid, "ingested": file.filename}, status_code=200)
 
 
 # ---- 技能 ----
-@app.post("/api/skills/skills")
+@app.post("/api/skills")
 async def create_skill(req: Request):
     body = await req.json()
     sid = "skill_" + uuid.uuid4().hex[:12]
@@ -124,14 +124,14 @@ async def create_playbook(req: Request):
 
 
 # ---- 删除（回滚）----
-@app.delete("/api/kb/kb/{kid}")
+@app.delete("/api/kb/{kid}")
 async def del_kb(kid: str):
     kb_store.discard(kid)
     log("DELETE_KB", id=kid)
     return Response(status_code=204)
 
 
-@app.delete("/api/skills/skills/{sid}")
+@app.delete("/api/skills/{sid}")
 async def del_skill(sid: str):
     skill_store.discard(sid)
     log("DELETE_SKILL", id=sid)

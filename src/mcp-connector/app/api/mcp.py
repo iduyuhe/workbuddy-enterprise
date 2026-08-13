@@ -68,6 +68,19 @@ def get_server(server_id: uuid.UUID, db: Session = Depends(get_db)):
     return _to_out(server)
 
 
+@router.delete("/mcp/servers/{server_id}")
+def delete_server(server_id: uuid.UUID, db: Session = Depends(get_db)):
+    server = db.get(MCPServer, server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="mcp server not found")
+    # 级联清理工具清单与凭据引用
+    db.query(MCPCredential).filter(MCPCredential.server_id == server_id).delete()
+    db.query(MCPTool).filter(MCPTool.server_id == server_id).delete()
+    db.delete(server)
+    db.commit()
+    return {"deleted": str(server_id)}
+
+
 @router.post("/mcp/servers/{server_id}/sync")
 async def sync_tools(server_id: uuid.UUID, db: Session = Depends(get_db)):
     server = db.get(MCPServer, server_id)
