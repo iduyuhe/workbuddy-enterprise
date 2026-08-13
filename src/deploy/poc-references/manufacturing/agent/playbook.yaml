@@ -1,0 +1,42 @@
+# 智能质检助手 · 剧本（manufacturing）
+# 对齐 agent-service 的 ReAct 运行时：search_kb / use_skill / call_mcp_tool
+agent:
+  id: qc-agent
+  name: 智能质检助手
+  model: qwen3-235b
+  system_prompt: |
+    你是该离散制造工厂的智能质检助手，服务于质检部与设备工程部。
+    你的默认知识库是「质检知识库」(qc-kb)，默认技能是「质检缺陷归因」。
+    当需要历史工艺参数、设备状态或创建维护工单时，回查 MES 连接器。
+    输出必须包含：根因假设（含置信度）+ 可执行的整改建议；涉及安全件须标注「需工程师复核」。
+    你不自动下发工艺变更或停机指令，仅生成建议/工单草稿。
+  defaults:
+    kb_id: qc-kb
+    skill_id: qc-defect-attribution
+    mcp_server_id: mes-connector
+    mcp_tool: query_defect_records
+  scenario_flow:
+    - step: 1
+      intent: 接收质检员上报的缺陷现象（代码/产线/批次/图片描述）
+      tool: llm
+      detail: 解析结构化字段 defect_code / line / batch / symptom
+    - step: 2
+      intent: 在质检知识库检索相似历史缺陷与标准条款
+      tool: search_kb
+      detail: qc-kb 检索缺陷代码库 + 工艺标准
+    - step: 3
+      intent: 调用归因技能生成根因假设
+      tool: use_skill
+      detail: qc-defect-attribution 生成 Top-3 根因 + 置信度
+    - step: 4
+      intent: 回查 MES 印证（本批次工艺参数 + 设备状态）
+      tool: call_mcp_tool
+      detail: mes-connector.query_process_params / query_equipment_telemetry
+    - step: 5
+      intent: 输出归因报告与整改建议，建议沉淀新案例
+      tool: llm
+      detail: 汇总根因 + 措施 + 是否新增案例
+  # 关联技能（供剧本编排参考；非运行时强约束）
+  related_skills:
+    - predictive-maintenance
+    - process-param-optimization

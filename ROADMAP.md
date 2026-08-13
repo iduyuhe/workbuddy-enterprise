@@ -35,7 +35,7 @@ WorkBuddy Enterprise Edition 采用「先跑通最小闭环、再阶梯式增强
 
 - [x] **千企规模**：K8s + Helm 生产编排，弹性伸缩，灰度发布（`helm/workbuddy-enterprise` chart：8 服务 Deployment/Service/HPA + Ingress + 可选 PG/Redis/Qdrant 集群内实例；HPA 弹性伸缩；Nginx Ingress 权重灰度。helm lint + 三场景 helm template + PyYAML 校验全绿，详见 `src/deploy/K8S_DEPLOY.md` 与 VERIFICATION_REPORT 第 21 节）
 - [x] **生态市场**：技能 / 连接器 / 专家包的交易与分发（新增 `marketplace-service`：发布 / 浏览筛选 / 版本分发 / 租户安装(获取) / 评价评分 / 运营统计；多租户隔离；真实 PG e2e 7/7 全绿；接入 gateway `/api/marketplace` 路由 + RBAC + Helm 渲染。详见 VERIFICATION_REPORT 第 22 节）
-- [ ] **标杆 POC**：制造业 / 金融业样板客户，沉淀行业 Killer Scenario
+- [x] **标杆 POC**：制造业 / 金融业样板客户，沉淀行业 Killer Scenario（两套可直接铺进租户的参考骨架：`src/deploy/poc-references/` 下的 manufacturing / finance，含市场包清单 + 技能 + 知识库种子 + MCP 连接器 + 智能体剧本 + 验收标准；`validate_poc.py` 校验 0 error、`provision.py` 干跑通过。详见 VERIFICATION_REPORT 第 23 节）
 - [ ] **社区运营**：文档站点、示例库、贡献者激励
 
 ## 不确定性

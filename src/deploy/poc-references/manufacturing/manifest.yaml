@@ -1,0 +1,89 @@
+# ============================================================
+# 制造业·智能质检标杆 POC —— 市场包 + Killer Scenario + 资源清单
+# 对齐 src/deploy/poc-references/SCHEMA.md
+# ============================================================
+
+# ---- ① 市场包元数据（PackageCreate 兼容，可直发生态市场）----
+slug: wb-poc-manufacturing-qc
+name: 制造业·智能质检标杆 POC
+package_type: expert
+publisher: 工业5点0产业生态联盟
+summary: 离散制造质检场景的 Killer Scenario：缺陷归因 + 设备预测性维护 + 工艺参数优化一体化。
+description: |
+  面向离散制造（3C / 汽车零部件 / 精密加工）中型工厂的标杆 POC 解决方案包。
+  把企业知识库（缺陷代码库、设备手册、工艺标准）、质检归因技能、MES 连接器、
+  智能体剧本打包成一个可一键铺进客户租户的 expert 包，证明平台在制造业质检与
+  设备运维场景的端到端价值。完成验证后可原样发布到生态市场供同行业租户获取。
+license: CC-BY-NC-4.0
+price_model: free
+tags: [制造业, 质检, 缺陷归因, 设备运维, 预测性维护, 工艺优化, 标杆POC, killer-scenario]
+categories: [标杆POC, 制造业]
+homepage: https://github.com/iduyuhe/zhiyan-evolviq
+repository: https://github.com/iduyuhe/zhiyan-evolviq
+supported_platforms: [k8s, docker-compose]
+version: 0.1.0
+
+# ---- ② Killer Scenario 定义 ----
+scenario:
+  target_customer: 离散制造中型工厂（质检部 + 设备工程部），年产值 1–20 亿，已上线 MES。
+  pain_points:
+    - 缺陷归因靠老师傅经验，平均 MTTR 长达数小时，新人难以上手。
+    - 设备突发停机造成整线停摆，缺乏提前预警手段。
+    - 工艺参数调整凭感觉，良率波动找不到系统性根因。
+  killer_scenario: |
+    质检员在工位上报缺陷（现象/图片/产线/批次）→ 智能体在「质检知识库」检索相似历史缺陷与标准
+    → 调用「质检缺陷归因」技能生成 Top-3 根因假设与置信度 → 回查 MES 该批次工艺参数与设备状态印证
+    → 输出归因报告 + 整改建议，并自动沉淀为新案例。同时「预测性维护」技能基于设备遥测识别劣化趋势，
+    在停机前主动告警；「工艺参数优化」技能基于良率数据给出参数调整区间建议。
+  success_metrics:
+    - id: defect-mttr
+      name: 缺陷归因平均耗时(MTTR)
+      baseline: "4 小时/次"
+      target: "≤15 分钟/次"
+      measure: 系统时间戳（上报→报告）
+    - id: first-pass-yield
+      name: 一次交检合格率(FPY)
+      baseline: "92%"
+      target: "≥96%"
+      measure: MES 质检汇总
+    - id: unplanned-downtime
+      name: 设备非计划停机时长
+      baseline: "12 小时/月"
+      target: "≤5 小时/月"
+      measure: MES 设备状态
+    - id: knowledge-reuse
+      name: 历史案例复用率
+      baseline: "≈0（靠口口相传）"
+      target: "≥70% 缺陷可命中历史案例"
+      measure: 知识库检索命中统计
+
+# ---- ③ 资源清单（provision.py 据此在租户内创建）----
+resources:
+  knowledge_bases:
+    - id: qc-kb
+      name: 质检知识库
+      seed_dir: knowledge/seed
+  skills:
+    - id: qc-defect-attribution
+      slug: qc-defect-attribution
+      path: skills/qc-defect-attribution
+      name: 质检缺陷归因
+      is_public: true
+    - id: predictive-maintenance
+      slug: predictive-maintenance
+      path: skills/predictive-maintenance
+      name: 预测性维护
+      is_public: true
+    - id: process-param-optimization
+      slug: process-param-optimization
+      path: skills/process-param-optimization
+      name: 工艺参数优化
+      is_public: true
+  mcp_servers:
+    - id: mes-connector
+      name: MES 连接器
+      spec: mcp/mes-connector.yaml
+  agents:
+    - id: qc-agent
+      name: 智能质检助手
+      playbook: agent/playbook.yaml

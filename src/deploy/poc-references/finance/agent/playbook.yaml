@@ -1,0 +1,41 @@
+# 智能合规助手 · 剧本（finance）
+# 对齐 agent-service 的 ReAct 运行时：search_kb / use_skill / call_mcp_tool
+agent:
+  id: compliance-agent
+  name: 智能合规助手
+  model: qwen3-235b
+  system_prompt: |
+    你是该金融机构的智能合规助手，服务于合规部与研究所。
+    默认知识库是「合规知识库」(compliance-kb)，默认技能是「合规条款比对」。
+    需要报送状态、新规、义务日历或提交草稿时，回查监管报送系统连接器。
+    所有比对与报送校验须可审计回溯；你不自动放行研报、不自动正式报送，
+    仅生成合规结论/校验报告/草稿，最终由合规官确认。
+  defaults:
+    kb_id: compliance-kb
+    skill_id: compliance-clause-match
+    mcp_server_id: regulatory-filing-connector
+    mcp_tool: query_filing_status
+  scenario_flow:
+    - step: 1
+      intent: 接收研报草稿/对客材料/报送报表
+      tool: llm
+      detail: 解析文档类型与待审/待核内容
+    - step: 2
+      intent: 研报摘要与关键数据抽取（投研主线）
+      tool: use_skill
+      detail: research-report-summary 生成摘要 + 口径问答
+    - step: 3
+      intent: 合规条款逐条比对，标注风险等级
+      tool: use_skill
+      detail: compliance-clause-match 比对内部制度 + 监管红线
+    - step: 4
+      intent: 监管报送核对（缺失/差错/勾稽）
+      tool: call_mcp_tool
+      detail: regulatory-filing-connector.query_filing_status / query_obligation_calendar
+    - step: 5
+      intent: 输出合规结论 + 报送校验报告（留痕）
+      tool: llm
+      detail: 汇总风险 + 修改建议 + 是否放行/提交（均待人工确认）
+  related_skills:
+    - research-report-summary
+    - regulatory-filing-check

@@ -1,0 +1,87 @@
+# ============================================================
+# 金融业·智能合规标杆 POC —— 市场包 + Killer Scenario + 资源清单
+# 对齐 src/deploy/poc-references/SCHEMA.md
+# ============================================================
+
+# ---- ① 市场包元数据（PackageCreate 兼容，可直发生态市场）----
+slug: wb-poc-finance-compliance
+name: 金融业·智能合规标杆 POC
+package_type: expert
+publisher: 工业5点0产业生态联盟
+summary: 金融机构合规与投研场景的 Killer Scenario：研报摘要问答 + 合规条款比对 + 监管报送核对一体化。
+description: |
+  面向银行 / 券商 / 保险等持牌金融机构的标杆 POC 解决方案包，覆盖「投研提效」与「合规降本」两条主线。
+  把企业知识库（监管法规摘要、内部合规制度）、研报/合规技能、监管报送系统连接器、智能体剧本打包成
+  可一键铺进租户的 expert 包，证明平台在金融业合规与研报场景的端到端价值。完成验证后可原样发布到生态市场。
+license: CC-BY-NC-4.0
+price_model: free
+tags: [金融业, 合规, 研报, 监管报送, 条款比对, 标杆POC, killer-scenario]
+categories: [标杆POC, 金融业]
+homepage: https://github.com/iduyuhe/zhiyan-evolviq
+repository: https://github.com/iduyuhe/zhiyan-evolviq
+supported_platforms: [k8s, docker-compose]
+version: 0.1.0
+
+# ---- ② Killer Scenario 定义 ----
+scenario:
+  target_customer: 银行/券商/保险的合规部 + 研究所（投研），受强监管、文档与报送压力大。
+  pain_points:
+    - 研究员写研报耗时长，信息检索与格式校验占用大量精力。
+    - 合规条款比对靠人工逐条核对，覆盖不全、易漏判。
+    - 监管报送（EAST/1104/反洗钱等）字段多、口径易错，差错即受罚。
+  killer_scenario: |
+    研究员上传研报草稿/素材 → 智能体做摘要与问答、核对数据口径 → 「合规条款比对」技能把研报表述与
+    内部合规制度、监管红线逐条比对并标注风险 → 「监管报送核对」技能经报送系统连接器核对报表字段口径、
+    提示缺失项与差错 → 输出合规结论 + 报送校验报告。全程留痕（审计），满足可回溯要求。
+  success_metrics:
+    - id: report-cycle
+      name: 研报成稿周期
+      baseline: "3 个工作日/篇"
+      target: "≤1 个工作日/篇"
+      measure: 系统时间戳（立项→成稿）
+    - id: clause-coverage
+      name: 合规条款比对覆盖率
+      baseline: "≈人工 40%（抽样）"
+      target: "100% 逐条比对"
+      measure: 比对任务统计
+    - id: filing-error
+      name: 监管报送差错率
+      baseline: "0.8%（受罚风险）"
+      target: "≤0.1%"
+      measure: 报送复核差错
+    - id: manual-hours
+      name: 合规人工复核工时/周
+      baseline: "40 人时/周"
+      target: "≤12 人时/周"
+      measure: 工时系统
+
+# ---- ③ 资源清单（provision.py 据此在租户内创建）----
+resources:
+  knowledge_bases:
+    - id: compliance-kb
+      name: 合规知识库
+      seed_dir: knowledge/seed
+  skills:
+    - id: research-report-summary
+      slug: research-report-summary
+      path: skills/research-report-summary
+      name: 研报摘要与问答
+      is_public: true
+    - id: compliance-clause-match
+      slug: compliance-clause-match
+      path: skills/compliance-clause-match
+      name: 合规条款比对
+      is_public: true
+    - id: regulatory-filing-check
+      slug: regulatory-filing-check
+      path: skills/regulatory-filing-check
+      name: 监管报送核对
+      is_public: true
+  mcp_servers:
+    - id: regulatory-filing-connector
+      name: 监管报送系统连接器
+      spec: mcp/regulatory-filing-connector.yaml
+  agents:
+    - id: compliance-agent
+      name: 智能合规助手
+      playbook: agent/playbook.yaml

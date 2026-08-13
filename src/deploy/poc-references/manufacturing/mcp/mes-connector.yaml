@@ -1,0 +1,46 @@
+# MES 连接器规格（manufacturing）
+# 对齐 mcp-connector 的 POST /api/mcp/servers 与 /{id}/sync。
+# secret_ref 走平台密钥保管，不在清单中落明文。
+name: MES 连接器
+transport: sse
+endpoint: http://mes-internal:9000/sse
+secret_ref: vault://mes-readonly
+tools:
+  - name: query_defect_records
+    description: 按时间段/产线/缺陷代码查询质检记录
+    schema_json:
+      type: object
+      properties:
+        line: { type: string, description: 产线编号 }
+        code: { type: string, description: 缺陷代码（如 D01） }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+      required: [from, to]
+  - name: query_equipment_telemetry
+    description: 查询设备传感器时序数据（温度/振动/电流/节拍）
+    schema_json:
+      type: object
+      properties:
+        equipment_id: { type: string, description: 设备编号 }
+        metric: { type: string, enum: [temperature, vibration, current, cycle_time] }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+      required: [equipment_id, metric, from, to]
+  - name: query_process_params
+    description: 查询某批次的工艺参数曲线（炉温/压力/转速/节拍）
+    schema_json:
+      type: object
+      properties:
+        batch: { type: string, description: 生产批次号 }
+        params: { type: array, items: { type: string } }
+      required: [batch]
+  - name: create_maintenance_order
+    description: 创建维护工单草稿（需人工在 MES 确认后执行）
+    schema_json:
+      type: object
+      properties:
+        equipment_id: { type: string }
+        level: { type: string, enum: [watch, warning, urgent] }
+        suggested_window: { type: string, description: 建议维护窗口 }
+        note: { type: string }
+      required: [equipment_id, level]
